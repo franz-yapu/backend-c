@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PRODUCER
+  ADMIN
+  CLIENT
+}
+
+enum AuctionStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+enum CoffeeQuality {
+  SPECIALTY
+  PREMIUM
+  STANDARD
+  COMMERCIAL
+}
+
+
+
+enum CoffeeProcess {
+  WASHED     // Lavado
+  NATURAL    // Natural
+  HONEY      // Honey
+  ANAEROBIC  // Anaeróbico
+  PULPED     // Despulpado
+  OTHER      // Otro
+}
+
+
+model Dms {
+  id        String   @id @default(uuid())
+  fileName  String   @map("file_name")
+  path      String
+  mimeType  String   @map("mime_type")
+  size      Int
+  userId    String?
+  module    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("dms")
+}
+
+model Role {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  users     User[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("role")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  firstName   String?  @map("first_name")
+  lastName    String?  @map("last_name")
+  companyName String?  @map("company_name")
+  phone       Int?
+  address     String?
+  city        String?
+  country     String?
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  roleId      String   @map("role_id")
+
+  // Relaciones
+  role               Role          @relation(fields: [roleId], references: [id])
+  coffeeLots         CoffeeLot[]
+  managedAuctions    Auction[]     @relation("ManagedAuctions")
+  sellerAuctions     Auction[]     @relation("SellerAuctions")
+  bids               Bid[]
+  documents          Dms[]
+  soldTransactions   Transaction[] @relation("SellerTransactions")
+  boughtTransactions Transaction[] @relation("BuyerTransactions")
+  products           Product[]
+
+  @@map("user")
+}
+
+model CoffeeLot {
+  // Identificación básica
+  id              String         @id @default(uuid())         // Unique coffee lot identifier
+  name            String                                    // Coffee lot name (e.g., "CAFE TEODOSIO_ESPERANZA B")
+  description     String?                                   // Optional description of the lot
+  producerName    String?       @map("producer_name")      // Producer name (e.g., "TEODOSIO JUMPIRI")
+  isSpecialty     Boolean       @default(false)            // Indicates if it's specialty coffee
+
+  // Información general del café
+  cupScore        Float?         @map("cup_score")         // Cup score (e.g., 84.88)
+  variety         String?                                  // Coffee variety (e.g., "Catuai rojo")
+  process         String?                           // Processing method (washed, natural, honey, etc.)
+  dryingSystem    String?        @map("drying_system")     // Drying system (e.g., "Mesa")
+  quantityLbs     Float?         @map("quantity_lbs")      // Quantity in pounds (e.g., 384.43)
+  quantity        Float                                    // Quantity in kilograms (e.g., 174.38)
+  position        Int?                                     // Position in competition or ranking (e.g., 17)
+
+  // Origen del microlote
+  harvestYear     Int?           @map("harvest_year")     // Harvest year (e.g., 2024)
+  country         String?                                 // Country of origin (e.g., "Bolivia")
+  region          String?                                 // Region/Department (e.g., "La Paz")
+  province        String?                                 // Province (e.g., "Caranavi")
+  municipality    String?                                 // Municipality (e.g., "Caranavi")
+  community       String?                                 // Community (e.g., "Esperanza B")
+
+  // Información técnica
+  altitude        Int?                                    // Altitude in meters above sea level (e.g., 1750)
+  productionSystem String?        @map("production_system") // Production system (e.g., "Ecológico")
+  shadeType       String?         @map("shade_type")      // Type of shade (e.g., "Sikyle")
+
+  // Perfil en taza (flavor profile)
+  fragranceAroma  String?         @map("fragrance_aroma") // Fragrance/Aroma description (e.g., "sultana, avellanas y chocolate")
+  acidity         String?                                // Acidity description (e.g., "cítrica")
+  flavor          String?                                // Flavor description (e.g., "nibs de cacao, caramelo, nuez, miel, sedoso y cremoso")
+  body            String?                                // Body description
+  aftertaste      String?                                // Aftertaste description
+
+  // Información comercial
+  status          String         @default("AVAILABLE")   // Lot status (available, sold, etc.)
+  suggestedPrice  Float?         @map("suggested_price") // Suggested price
+  isInAuction     Boolean        @default(false)         // Is currently in auction
+  moistureContent Float?         @map("moisture_content") // Moisture content percentage
+
+  // Multimedia y documentos
+  images          String?                               // References to images (could be JSON array)
+  documents       String?                               // References to documents (certifications, etc.)
+
+  // Metadata
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  // Relaciones
+  sellerId        String                                // Seller user ID
+  auctionId       String?                               // Associated auction ID (if any)
+
+  seller          User        @relation(fields: [sellerId], references: [id])
+  auction         Auction?    @relation(fields: [auctionId], references: [id])
+  auctionDetails  AuctionCoffeeLot[]
+  bids            Bid[]
+  transactions    Transaction[]
+
+  @@map("coffee_lots")
+}
+
+
+model AuctionCoffeeLot {
+  id            String @id @default(uuid())
+  startingPrice Float  @map("starting_price")
+  reservePrice  Float? @map("reserve_price")
+  currentPrice  Float? @default(0) @map("current_price")
+  auctionId     String
+  coffeeLotId   String
+
+  auction   Auction   @relation(fields: [auctionId], references: [id])
+  coffeeLot CoffeeLot @relation(fields: [coffeeLotId], references: [id], onDelete: Cascade)
+
+  @@unique([auctionId, coffeeLotId])
+  @@map("auction_coffee_lots")
+}
+
+model Auction {
+  id           String        @id @default(uuid())
+  title        String
+  description  String?
+  startDate    DateTime      @map("start_date")
+  endDate      DateTime      @map("end_date")
+  minIncrement Float         @default(0.5) @map("min_increment")
+  status       AuctionStatus @default(DRAFT)
+  isActive     Boolean       @default(false)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  adminId  String
+  sellerId String?
+
+  admin          User               @relation("ManagedAuctions", fields: [adminId], references: [id])
+  seller         User?              @relation("SellerAuctions", fields: [sellerId], references: [id])
+  coffeeLots     CoffeeLot[]
+  auctionDetails AuctionCoffeeLot[]
+  bids           Bid[]
+  transactions   Transaction[]
+
+  
+  @@index([status, isActive])
+  @@map("auctions")
+}
+
+model Bid {
+  id          String   @id @default(uuid())
+  amount      Float
+  createdAt   DateTime @default(now()) @map("created_at")
+  auctionId   String
+  userId      String
+  coffeeLotId String
+
+  auction   Auction   @relation(fields: [auctionId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+  coffeeLot CoffeeLot @relation(fields: [coffeeLotId], references: [id])
+
+  @@index([auctionId, amount])
+  @@map("bids")
+}
+
+model Transaction {
+  id          String    @id @default(uuid())
+  amount      Float
+  status      String    @default("PENDING")
+  paymentDate DateTime? @map("payment_date")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  auctionId String
+  buyerId   String
+  sellerId  String
+  coffeeLotId String   
+
+  auction Auction @relation(fields: [auctionId], references: [id])
+  buyer   User    @relation("BuyerTransactions", fields: [buyerId], references: [id])
+  seller  User    @relation("SellerTransactions", fields: [sellerId], references: [id])
+   coffeeLot CoffeeLot @relation(fields: [coffeeLotId], references: [id]) // 👈 Relación directa
+
+  @@map("transactions")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Int      @default(0)
+  stock       Int      @default(0)
+  file        String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  categoryId  String?  @map("category_id")
+  marcaId     String?  @map("marca_id")
+  userId      String?
+
+  // Relaciones
+  category Category? @relation(fields: [categoryId], references: [id])
+  marca    Marca?    @relation(fields: [marcaId], references: [id])
+  user     User?     @relation(fields: [userId], references: [id])
+
+  @@map("product")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  status      String   @default("active")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@map("category")
+}
+
+model Marca {
+  id        String   @id @default(uuid())
+  name      String
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@map("marca")
+}

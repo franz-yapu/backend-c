@@ -1,0 +1,227 @@
+@startuml
+!theme plain
+
+skinparam {
+    shadowing false
+    arrowColor #368BC1
+    actorBorderColor #368BC1
+    classBorderColor #368BC1
+    classBackgroundColor #F7F7F7
+    classHeaderBackgroundColor #368BC1
+    classHeaderColor #FFFFFF
+}
+
+title Sistema de Subastas de Café - Modelo de Datos
+
+' ===== ENUMS =====
+enum AuctionStatus { DRAFT ACTIVE CLOSED CANCELLED }
+enum CoffeeProcess { WASHED NATURAL HONEY ANAEROBIC PULPED OTHER }
+enum CoffeeQuality { SPECIALTY PREMIUM STANDARD COMMERCIAL }
+enum UserRole { PRODUCER ADMIN CLIENT }
+
+' ===== CLASES PRINCIPALES =====
+class User {
+    ++id : text [PK]
+    email : text [UK]
+    password : text
+    first_name : text
+    last_name : text
+    role_id : text [FK]
+    --
+    +registerUser()
+    +loginUser()
+    +updateProfile()
+    +verifyEmail()
+    +changePassword()
+    +deleteUser()
+    +assignRole()
+}
+
+class Role {
+    ++id : text [PK]
+    name : text [UK]
+    --
+    +createRole()
+    +updateRole()
+    +deleteRole()
+    +assignPermissions()
+}
+
+class Auction {
+    ++id : text [PK]
+    title : text
+    description : text
+    start_date : timestamp
+    end_date : timestamp
+    min_increment : double
+    status : AuctionStatus
+    adminId : text [FK]
+    sellerId : text [FK]
+    --
+    +createAuction()
+    +updateAuction()
+    +deleteAuction()
+    +openAuction()
+    +closeAuction()
+    +cancelAuction()
+    +addCoffeeLot()
+    +removeCoffeeLot()
+    +getActiveAuctions()
+}
+
+class CoffeeLot {
+    ++id : text [PK]
+    name : text
+    description : text
+    quantity : double
+    cup_score : double
+    suggested_price : double
+    isInAuction : boolean
+    sellerId : text [FK]
+    auctionId : text [FK]
+    process : CoffeeProcess
+    quality : CoffeeQuality
+    --
+    +createCoffeeLot()
+    +updateCoffeeLot()
+    +deleteCoffeeLot()
+    +addToAuction()
+    +removeFromAuction()
+    +calculateSuggestedPrice()
+    +updateQualityScore()
+    +getAvailableLots()
+}
+
+class AuctionCoffeeLot {
+    ++id : text [PK]
+    starting_price : double
+    reserve_price : double
+    current_price : double
+    auctionId : text [FK]
+    coffeeLotId : text [FK]
+    --
+    +addLotToAuction()
+    +removeLotFromAuction()
+    +updateCurrentPrice()
+    +validateReservePrice()
+    +getAuctionLots()
+}
+
+class Bid {
+    ++id : text [PK]
+    amount : double
+    auctionId : text [FK]
+    userId : text [FK]
+    coffeeLotId : text [FK]
+    --
+    +placeBid()
+    +cancelBid()
+    +getHighestBid()
+    +getBidHistory()
+    +validateBidAmount()
+    +checkBidIncrement()
+}
+
+class Transaction {
+    ++id : text [PK]
+    amount : double
+    status : text
+    auctionId : text [FK]
+    buyerId : text [FK]
+    sellerId : text [FK]
+    coffeeLotId : text [FK]
+    --
+    +createTransaction()
+    +updateTransactionStatus()
+    +processPayment()
+    +refundTransaction()
+    +generateReceipt()
+    +validateTransaction()
+}
+
+class Product {
+    ++id : text [PK]
+    name : text
+    price : integer
+    stock : integer
+    category_id : text [FK]
+    marca_id : text [FK]
+    userId : text [FK]
+    --
+    +createProduct()
+    +updateProduct()
+    +deleteProduct()
+    +updateStock()
+    +activateProduct()
+    +deactivateProduct()
+}
+
+class Category {
+    ++id : text [PK]
+    name : text
+    --
+    +createCategory()
+    +updateCategory()
+    +deleteCategory()
+}
+
+class Marca {
+    ++id : text [PK]
+    name : text
+    --
+    +createMarca()
+    +updateMarca()
+    +deleteMarca()
+}
+
+class DMS {
+    ++id : text [PK]
+    file_name : text
+    path : text
+    userId : text [FK]
+    --
+    +uploadFile()
+    +getFile()
+    +deleteFile()
+}
+
+' ===== RELACIONES =====
+User ||--o{ Auction : "crea"
+User ||--o{ CoffeeLot : "vende"
+User ||--o{ Bid : "realiza"
+User ||--o{ Transaction : "compra/vende"
+User ||--o{ Product : "posee"
+User ||--o{ DMS : "sube"
+
+Role ||--o{ User : "tiene"
+
+Auction ||--o{ AuctionCoffeeLot : "contiene"
+Auction ||--o{ Bid : "recibe"
+Auction ||--o{ Transaction : "genera"
+
+CoffeeLot ||--o{ AuctionCoffeeLot : "participa"
+CoffeeLot ||--o{ Bid : "recibe ofertas"
+CoffeeLot ||--o{ Transaction : "transacciona"
+
+Category ||--o{ Product : "categoriza"
+Marca ||--o{ Product : "marca"
+
+AuctionCoffeeLot }o--|| CoffeeLot : "lote"
+AuctionCoffeeLot }o--|| Auction : "subasta"
+
+Bid }o--|| User : "usuario"
+Bid }o--|| Auction : "subasta"
+Bid }o--|| CoffeeLot : "lote"
+
+Transaction }o--|| User : "comprador"
+Transaction }o--|| User : "vendedor"
+Transaction }o--|| Auction : "subasta"
+Transaction }o--|| CoffeeLot : "lote"
+
+Product }o--|| Category : "categoría"
+Product }o--|| Marca : "marca"
+Product }o--|| User : "usuario"
+
+DMS }o--|| User : "usuario"
+
+@enduml

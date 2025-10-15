@@ -1,0 +1,208 @@
+@startuml
+!theme plain
+
+skinparam {
+    shadowing false
+    arrowColor #368BC1
+    actorBorderColor #368BC1
+    usecaseBorderColor #368BC1
+    usecaseBackgroundColor #F7F7F7
+    usecaseFontColor #000000
+}
+
+title Sistema de Subastas de Café - Casos de Uso General
+
+actor UsuarioNoRegistrado as "Usuario No\nRegistrado"
+actor Productor as "Productor"
+actor Cliente as "Cliente"
+actor Administrador as "Administrador"
+actor Sistema as "Sistema"
+
+' ===== PAQUETE DE AUTENTICACIÓN =====
+package "Gestión de Usuarios" {
+  usecase "Registrarse" as UC1
+  usecase "Iniciar Sesión" as UC2
+  usecase "Recuperar Contraseña" as UC3
+  usecase "Verificar Email" as UC4
+  usecase "Actualizar Perfil" as UC5
+  
+  UsuarioNoRegistrado --> UC1
+  UsuarioNoRegistrado --> UC2
+  UsuarioNoRegistrado --> UC3
+  Cliente --> UC5
+  Productor --> UC5
+  Sistema --> UC4
+}
+
+' ===== PAQUETE DE GESTIÓN DE LOTES =====
+package "Gestión de Lotes de Café" {
+  usecase "Crear Lote de Café" as UC10
+  usecase "Editar Lote de Café" as UC11
+  usecase "Eliminar Lote de Café" as UC12
+  usecase "Subir Documentos Lote" as UC13
+  usecase "Calcular Precio Sugerido" as UC14
+  usecase "Evaluar Calidad" as UC15
+  
+  Productor --> UC10
+  Productor --> UC11
+  Productor --> UC12
+  Productor --> UC13
+  Sistema --> UC14
+  Administrador --> UC15
+}
+
+' ===== PAQUETE DE SUBASTAS =====
+package "Gestión de Subastas" {
+  usecase "Crear Subasta" as UC20
+  usecase "Programar Subasta" as UC21
+  usecase "Abrir Subasta" as UC22
+  usecase "Cerrar Subasta" as UC23
+  usecase "Cancelar Subasta" as UC24
+  usecase "Agregar Lote a Subasta" as UC25
+  usecase "Remover Lote de Subasta" as UC26
+  usecase "Configurar Precios Subasta" as UC27
+  
+  Administrador --> UC20
+  Administrador --> UC21
+  Administrador --> UC22
+  Administrador --> UC23
+  Administrador --> UC24
+  Administrador --> UC25
+  Administrador --> UC26
+  Administrador --> UC27
+  Productor --> UC25
+}
+
+' ===== PAQUETE DE OFERTAS =====
+package "Gestión de Ofertas" {
+  usecase "Realizar Oferta" as UC30
+  usecase "Consultar Ofertas" as UC31
+  usecase "Cancelar Oferta" as UC32
+  usecase "Ver Historial Ofertas" as UC33
+  usecase "Notificar Nueva Oferta" as UC34
+  usecase "Validar Oferta" as UC35
+  
+  Cliente --> UC30
+  Cliente --> UC31
+  Cliente --> UC32
+  Cliente --> UC33
+  Sistema --> UC34
+  Sistema --> UC35
+}
+
+' ===== PAQUETE DE TRANSACCIONES =====
+package "Gestión de Transacciones" {
+  usecase "Procesar Pago" as UC40
+  usecase "Generar Factura" as UC41
+  usecase "Confirmar Entrega" as UC42
+  usecase "Gestionar Reembolsos" as UC43
+  usecase "Ver Historial Transacciones" as UC44
+  usecase "Notificar Estado Pago" as UC45
+  
+  Sistema --> UC40
+  Sistema --> UC41
+  Sistema --> UC42
+  Administrador --> UC43
+  Cliente --> UC44
+  Productor --> UC44
+  Sistema --> UC45
+}
+
+' ===== PAQUETE DE CATÁLOGO =====
+package "Gestión de Catálogo" {
+  usecase "Buscar Productos" as UC50
+  usecase "Filtrar Lotes" as UC51
+  usecase "Ver Detalles Lote" as UC52
+  usecase "Comparar Lotes" as UC53
+  usecase "Gestionar Categorías" as UC54
+  usecase "Gestionar Marcas" as UC55
+  
+  Cliente --> UC50
+  Cliente --> UC51
+  Cliente --> UC52
+  Cliente --> UC53
+  Administrador --> UC54
+  Administrador --> UC55
+}
+
+' ===== PAQUETE DE REPORTES =====
+package "Reportes y Analytics" {
+  usecase "Generar Reporte Ventas" as UC60
+  usecase "Reporte Subastas Activas" as UC61
+  usecase "Analytics Rendimiento" as UC62
+  usecase "Reporte Ingresos" as UC63
+  usecase "Estadísticas Calidad" as UC64
+  
+  Administrador --> UC60
+  Administrador --> UC61
+  Administrador --> UC62
+  Administrador --> UC63
+  Administrador --> UC64
+}
+
+' ===== PAQUETE DE NOTIFICACIONES =====
+package "Sistema de Notificaciones" {
+  usecase "Notificar Inicio Subasta" as UC70
+  usecase "Notificar Oferta Superada" as UC71
+  usecase "Notificar Fin Subasta" as UC72
+  usecase "Notificar Pago Exitoso" as UC73
+  usecase "Notificar Cambio Estado" as UC74
+  
+  Sistema --> UC70
+  Sistema --> UC71
+  Sistema --> UC72
+  Sistema --> UC73
+  Sistema --> UC74
+}
+
+' ===== RELACIONES ENTRE ACTORES =====
+UsuarioNoRegistrado <|-- Cliente
+UsuarioNoRegistrado <|-- Productor
+UsuarioNoRegistrado <|-- Administrador
+
+' ===== RELACIONES ENTRE CASOS DE USO =====
+UC10 ..> UC13 : include
+UC20 ..> UC25 : include
+UC20 ..> UC27 : include
+UC30 ..> UC35 : include
+UC40 ..> UC41 : include
+UC50 ..> UC51 : include
+UC50 ..> UC52 : include
+
+UC22 ..> UC70 : extend
+UC23 ..> UC72 : extend
+UC30 ..> UC34 : extend
+UC40 ..> UC73 : extend
+
+' ===== NOTAS EXPLICATIVAS =====
+note top of Productor
+  **Productor**: 
+  - Gestiona sus lotes de café
+  - Participa en subastas
+  - Recibe pagos por ventas
+end note
+
+note top of Cliente
+  **Cliente**:
+  - Participa en subastas
+  - Realiza ofertas
+  - Gestiona compras
+end note
+
+note top of Administrador
+  **Administrador**:
+  - Gestiona todo el sistema
+  - Crea y controla subastas
+  - Genera reportes
+  - Valida calidad
+end note
+
+note right of UC35
+  **Validaciones**:
+  - Monto mínimo
+  - Incremento válido
+  - Fondos suficientes
+  - Subasta activa
+end note
+
+@enduml

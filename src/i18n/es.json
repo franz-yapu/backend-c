@@ -1,0 +1,7 @@
+{
+  "validation": {
+    "isString": "El campo debe ser un texto",
+    "isNotEmpty": "El campo no puede estar vacío"
+   
+  }
+}
