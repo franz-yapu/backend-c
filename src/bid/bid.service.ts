@@ -206,7 +206,7 @@ async findLastBids(auctionId: string, coffeeLotId: string, limit = 5) {
     orderBy: { createdAt: 'desc' },
     include: {
       user: {
-        select: { id: true, firstName: true, lastName: true },
+        select: { id: true, firstName: true, lastName: true , companyName: true },
       },
     },
   });
@@ -232,6 +232,12 @@ async findLastBidByUserAndLot(userId: string, coffeeLotId: string) {
   return this.prisma.bid.findFirst({
     where: { userId, coffeeLotId },
     orderBy: { createdAt: 'desc' },
+  });
+}
+
+async getAuction(auctionId: string) {
+  return this.prisma.auction.findUnique({
+    where: { id: auctionId }
   });
 }
 }

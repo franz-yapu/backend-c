@@ -8,10 +8,11 @@ import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { AuctionStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { AuctionTimerService } from './auction-timer.service';
 
 @Injectable()
 export class AuctionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService,private auctionTimerService: AuctionTimerService ) {}
 
   async create(createAuctionDto: CreateAuctionDto) {
     // Validar que el admin existe
@@ -205,7 +206,7 @@ export class AuctionsService {
       }
     }
 
-    return this.prisma.auction.update({
+    const updatedAuction = await this.prisma.auction.update({
       where: { id },
       data: updateAuctionDto,
       include: {
@@ -218,6 +219,20 @@ export class AuctionsService {
         }
       },
     });
+
+
+  
+  if (updateAuctionDto.status === AuctionStatus.ACTIVE) {
+    console.log(`⏰ Subasta ${id} activada - Iniciando timer`);
+    
+    // Inyectar AuctionTimerService y llamar onAuctionActivated
+     this.auctionTimerService.onAuctionActivated(id);
+   /*  this.logger.log(`⏰ Subasta ${id} activada - Timer debería iniciarse`); */
+  } else if (updateAuctionDto.status === AuctionStatus.CLOSED) {
+     this.auctionTimerService.onAuctionDeactivated(id);
+    /* this.logger.log(`⏰ Subasta ${id} cerrada - Timer debería detenerse`); */
+  }
+  return updatedAuction;
   }
 
   async remove(id: string) {
@@ -249,45 +264,62 @@ export class AuctionsService {
   }
 
   async updateStatus(id: string, status: AuctionStatus) {
-    const auction = await this.findOne(id);
+  const auction = await this.findOne(id);
 
-    // Validar transiciones de estado
-    if (status === AuctionStatus.ACTIVE) {
-      if (auction.status !== AuctionStatus.DRAFT) {
-        throw new BadRequestException('Only DRAFT auctions can be activated');
-      }
-
-      // Asegurarse que hay al menos un lote en la subasta
-      const lotsCount = await this.prisma.auctionCoffeeLot.count({
-        where: { auctionId: id }
-      });
-
-      if (lotsCount === 0) {
-        throw new BadRequestException('Cannot activate auction without coffee lots');
-      }
-
-      // Desactivar cualquier otra subasta activa
-      await this.prisma.auction.updateMany({
-        where: { isActive: true },
-        data: { isActive: false }
-      });
+  // Validar transiciones de estado
+  if (status === AuctionStatus.ACTIVE) {
+    if (auction.status !== AuctionStatus.DRAFT) {
+      throw new BadRequestException('Only DRAFT auctions can be activated');
     }
 
-    return this.prisma.auction.update({
-      where: { id },
-      data: { 
-        status,
-        isActive: status === AuctionStatus.ACTIVE
-      },
-      include: {
-        auctionDetails: {
-          include: {
-            coffeeLot: true
-          }
-        }
-      }
+    // Asegurarse que hay al menos un lote en la subasta
+    const lotsCount = await this.prisma.auctionCoffeeLot.count({
+      where: { auctionId: id }
+    });
+
+    if (lotsCount === 0) {
+      throw new BadRequestException('Cannot activate auction without coffee lots');
+    }
+
+    // Desactivar cualquier otra subasta activa
+    await this.prisma.auction.updateMany({
+      where: { isActive: true },
+      data: { isActive: false }
     });
   }
+
+  const updatedAuction = await this.prisma.auction.update({
+    where: { id },
+    data: { 
+      status,
+      isActive: status === AuctionStatus.ACTIVE
+    },
+    include: {
+      auctionDetails: {
+        include: {
+          coffeeLot: true
+        }
+      }
+    }
+  });
+
+  // INICIAR O DETENER TIMER SEGÚN EL ESTADO
+  console.log(status === AuctionStatus.ACTIVE);
+  console.log(status);
+  
+  if (status === AuctionStatus.ACTIVE) {
+    console.log(`⏰ Subasta ${id} activada - Iniciando timer`);
+    
+    // Inyectar AuctionTimerService y llamar onAuctionActivated
+     this.auctionTimerService.onAuctionActivated(id);
+   /*  this.logger.log(`⏰ Subasta ${id} activada - Timer debería iniciarse`); */
+  } else if (status === AuctionStatus.CLOSED) {
+     this.auctionTimerService.onAuctionDeactivated(id);
+    /* this.logger.log(`⏰ Subasta ${id} cerrada - Timer debería detenerse`); */
+  }
+
+  return updatedAuction;
+}
 
   async getHighestBid(auctionId: string, coffeeLotId?: string) {
     const where: any = { auctionId };

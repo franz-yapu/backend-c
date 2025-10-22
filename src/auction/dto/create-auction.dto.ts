@@ -7,7 +7,8 @@ import {
   IsDateString,
   IsEnum, 
   IsDate,
-  IsISO8601
+  IsISO8601,
+  IsBoolean
 } from 'class-validator';
 import { AuctionStatus } from '@prisma/client';
 
@@ -60,4 +61,34 @@ export class CreateAuctionDto {
   @IsString()
   @IsNotEmpty()
   sellerId: string;
+
+   @ApiProperty({ description: 'original End Date)' , 
+    required: true  })
+   @IsISO8601({ strict: true }) // Más estricto que IsDateString
+   @IsNotEmpty()
+   originalEndDate: string;
+
+   @ApiProperty({ 
+    description: 'extended Times', 
+    required: true 
+  })
+  @IsNumber()
+  @IsOptional()
+  extendedTimes: number;
+
+   @ApiProperty({ 
+    description: 'extension Enabled', 
+    required: true 
+  })
+  @IsBoolean()
+  @IsOptional()
+  extensionEnabled: boolean;
+
+   @ApiProperty({ 
+    description: 'extension Minutes', 
+    required: true 
+  })
+  @IsNumber()
+  @IsOptional()
+  extensionMinutes: number;
 }

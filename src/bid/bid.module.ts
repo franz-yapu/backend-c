@@ -7,8 +7,6 @@ import { BidsController } from './bid.controller';
 import { BidsService } from './bid.service';
 import { BidsGateway } from './bids.gateway';
 
-
-
 @Module({
   imports: [
     PrismaModule,
@@ -21,7 +19,9 @@ import { BidsGateway } from './bids.gateway';
     BidsService,
     BidsGateway
   ],
-  exports: [BidsService, BidsGateway],
+  exports: [
+    BidsService, 
+    BidsGateway // Exporta BidsGateway para que AuctionModule pueda usarlo
+  ],
 })
-
 export class BidModule {}

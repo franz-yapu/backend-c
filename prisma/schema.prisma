@@ -183,6 +183,11 @@ model Auction {
   minIncrement Float         @default(0.5) @map("min_increment")
   status       AuctionStatus @default(DRAFT)
   isActive     Boolean       @default(false)
+
+  originalEndDate   DateTime?   @map("original_end_date")   // Fecha original de fin
+  extendedTimes     Int         @default(0) @map("extended_times") // Veces que se ha extendido
+  extensionEnabled  Boolean     @default(true) @map("extension_enabled") // Si está activa la extensión
+  extensionMinutes  Int         @default(3) @map("extension_minutes") // Minutos a extender
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 

@@ -46,6 +46,6 @@ import { EmailModule } from './email/email.module';
     CrudGeneratorModule,
     EmailModule], // Asegúrate que estén todos
   controllers: [AppController],
-  providers: [AppService,BidsGateway],
+  providers: [AppService],
 })
 export class AppModule { }

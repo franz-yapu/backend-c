@@ -1,0 +1,155 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam classFontSize 8
+skinparam classAttributeFontSize 6
+skinparam classMethodFontSize 6
+skinparam classBackgroundColor #F5F5FA
+skinparam classBorderColor #222244
+skinparam classArrowColor #444466
+skinparam classArrowThickness 1
+skinparam linetype ortho
+skinparam classSpacing 3
+skinparam nodeSpacing 2
+skinparam rankSpacing 1
+skinparam dpi 150
+skinparam pageMargin 0
+skinparam defaultTextAlignment center
+skinparam shadowing false
+left to right direction
+
+' --- FILA 1 ---
+together {
+  class User {
+    id: String
+    email: String
+    firstName: String
+    lastName: String
+    password: String
+    isVerified: Boolean
+    roleId: String
+    createdAt: DateTime
+    
+    +login()
+    +logout()
+    +updateProfile()
+  }
+
+  class Role {
+    id: String
+    name: String
+    createdAt: DateTime
+    updatedAt: DateTime
+    
+    +assignToUser(userId)
+  }
+
+  class Dms {
+    id: String
+    fileName: String
+    path: String
+    mimeType: String
+    size: Int
+    userId: String?
+    createdAt: DateTime
+    
+    +upload()
+    +download()
+    +delete()
+  }
+}
+
+' --- FILA 2 ---
+together {
+  class CoffeeLot {
+    id: String
+    name: String
+    producerName: String?
+    country: String?
+    variety: String?
+    process: String?
+    cupScore: Float?
+    quantity: Float
+    suggestedPrice: Float?
+    status: String
+    isInAuction: Boolean
+    createdAt: DateTime
+    
+    +listForAuction()
+    +updateDetails()
+  }
+
+  class Auction {
+    id: String
+    title: String
+    startDate: DateTime
+    endDate: DateTime
+    minIncrement: Float
+    status: AuctionStatus
+    isActive: Boolean
+    adminId: String
+    createdAt: DateTime
+    
+    +startAuction()
+    +endAuction()
+    +addCoffeeLot()
+  }
+
+  class AuctionCoffeeLot {
+    id: String
+    startingPrice: Float
+    reservePrice: Float?
+    currentPrice: Float?
+    auctionId: String
+    coffeeLotId: String
+    
+    +updatePrice(newPrice)
+  }
+}
+
+' --- FILA 3 ---
+together {
+  class Bid {
+    id: String
+    amount: Float
+    createdAt: DateTime
+    auctionId: String
+    userId: String
+    coffeeLotId: String
+    
+    +placeBid()
+  }
+
+  class Transaction {
+    id: String
+    amount: Float
+    status: String
+    paymentDate: DateTime?
+    createdAt: DateTime
+    auctionId: String
+    buyerId: String
+    sellerId: String
+    
+    +processPayment()
+    +refund()
+  }
+}
+
+' --- RELACIONES COMPACTAS ---
+User ||--||  Role
+User ||--o{ Dms
+User ||--o{ CoffeeLot
+User ||--o{ Auction
+User ||--o{ Bid
+User ||--o{ Transaction
+
+CoffeeLot  }o--o{ AuctionCoffeeLot
+CoffeeLot  }o--o{ Bid
+CoffeeLot  }o--o{ Transaction
+
+Auction }o--o{ AuctionCoffeeLot
+Auction }o--o{ Bid
+Auction }o--o{ Transaction
+
+AuctionCoffeeLot ||--|| CoffeeLot
+AuctionCoffeeLot ||--|| Auction
+@enduml

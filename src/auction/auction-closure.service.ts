@@ -1,45 +1,52 @@
-// auction-closure.service.ts
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from 'src/email/email.service';
+import { AuctionStatus } from '@prisma/client';
+import { BidsGateway } from 'src/bid/bids.gateway';
 
 @Injectable()
 export class AuctionClosureService {
   private readonly logger = new Logger(AuctionClosureService.name);
+  private readonly EXTENSION_MINUTES = 3;
+  private readonly LAST_MINUTES_THRESHOLD = 5;
 
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
-   /*  private mailService: MailService, */
+    @Inject(forwardRef(() => BidsGateway)) // Solo BidsGateway con forwardRef
+    private bidsGateway: BidsGateway,
   ) {
     this.logger.log('🔄 AuctionClosureService inicializado');
   }
 
-  // Verificación cada 5 minutos (equilibrio entre eficiencia y confiabilidad)
-  @Cron('*/30 * * * * *')
-  async handleExpiredAuctions() {
-    this.logger.log('🔍 Verificando subastas expiradas...');
+ // @Cron('*/30 * * * * *') // ← CORREGIDO: Cada 30 segundos
+   @Cron('0 */30 * * * *') // ← CORREGIDO: Cada 30 minutos
+ async handleExpiredAuctions() {
+  this.logger.log('🔍 Verificando subastas expiradas (CRON DE RESPALDO cada 5min)...');
+  
+  try {
+    const expiredAuctions = await this.findExpiredAuctions();
     
-    try {
-      const expiredAuctions = await this.findExpiredAuctions();
-      
-      for (const auction of expiredAuctions) {
-        await this.processAuctionCompletion(auction.id);
-      }
-      
-      this.logger.log(`✅ Procesadas ${expiredAuctions.length} subastas expiradas`);
-    } catch (error) {
-      this.logger.error('❌ Error procesando subastas expiradas:', error);
+    for (const auction of expiredAuctions) {
+      this.logger.warn(`⚠️ Subasta ${auction.id} expirada detectada por CRON de respaldo - EL TIMER DEBERÍA HABERLA MANEJADO`);
+      // Procesar solo si el timer no lo hizo
+      await this.processExpiredAuction(auction.id);
     }
+    
+    if (expiredAuctions.length > 0) {
+      this.logger.warn(`⚠️ CRON de respaldo procesó ${expiredAuctions.length} subastas - REVISAR TIMER SERVICE`);
+    }
+  } catch (error) {
+    this.logger.error('❌ Error en CRON de respaldo:', error);
   }
+}
 
   private async findExpiredAuctions() {
     return this.prisma.auction.findMany({
       where: {
         endDate: { lte: new Date() },
-        status: 'ACTIVE',
+        status: AuctionStatus.ACTIVE,
       },
       select: {
         id: true,
@@ -49,9 +56,63 @@ export class AuctionClosureService {
     });
   }
 
+  async processExpiredAuction(auctionId: string) {
+    const auction = await this.prisma.auction.findUnique({
+      where: { id: auctionId }
+    });
+
+    if (!auction || auction.status !== AuctionStatus.ACTIVE) {
+      return;
+    }
+
+    const hasRecentBids = await this.checkForLastMinuteBids(auctionId);
+    
+    if (hasRecentBids) {
+      await this.extendAuction(auctionId);
+      this.logger.log(`⏰ Subasta ${auctionId} extendida por 3 minutos debido a actividad reciente`);
+    } else {
+      await this.processAuctionCompletion(auctionId);
+      this.logger.log(`🎉 Subasta ${auctionId} cerrada definitivamente`);
+    }
+  }
+
+  async checkForLastMinuteBids(auctionId: string): Promise<boolean> {
+    const thresholdTime = new Date(Date.now() - this.LAST_MINUTES_THRESHOLD * 60 * 1000);
+    
+    const recentBids = await this.prisma.bid.findFirst({
+      where: {
+        auctionId,
+        createdAt: {
+          gte: thresholdTime
+        }
+      }
+    });
+
+    return !!recentBids;
+  }
+
+  async extendAuction(auctionId: string): Promise<void> {
+    const auction = await this.prisma.auction.findUnique({
+      where: { id: auctionId }
+    });
+
+    if (!auction || auction.status !== AuctionStatus.ACTIVE) {
+      return;
+    }
+
+    const newEndDate = new Date(Date.now() + this.EXTENSION_MINUTES * 60 * 1000);
+    
+    await this.prisma.auction.update({
+      where: { id: auctionId },
+      data: { endDate: newEndDate }
+    });
+
+    this.logger.log(`⏰ Subasta ${auctionId} extendida hasta ${newEndDate}`);
+    this.bidsGateway.notifyAuctionExtension(auctionId, newEndDate);
+  }
+
   async processAuctionCompletion(auctionId: string) {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Obtener información completa de la subasta
       const auction = await tx.auction.findUnique({
         where: { id: auctionId },
         include: {
@@ -71,12 +132,10 @@ export class AuctionClosureService {
         return;
       }
 
-      // 2. Procesar cada lote de la subasta
       for (const detail of auction.auctionDetails) {
         await this.processCoffeeLot(tx, auctionId, detail);
       }
 
-      // 3. Cerrar la subasta
       await tx.auction.update({
         where: { id: auctionId },
         data: {
@@ -86,15 +145,11 @@ export class AuctionClosureService {
       });
 
       this.logger.log(`🎉 Subasta "${auction.title}" cerrada exitosamente`);
+      this.bidsGateway.notifyAuctionClosed(auctionId);
     });
   }
 
-  private async processCoffeeLot(
-    tx: any, 
-    auctionId: string, 
-    detail: any
-  ) {
-    // 1. Obtener la puja ganadora para este lote
+  private async processCoffeeLot(tx: any, auctionId: string, detail: any) {
     const winningBid = await tx.bid.findFirst({
       where: {
         auctionId,
@@ -109,10 +164,8 @@ export class AuctionClosureService {
     });
 
     if (winningBid && this.isReservePriceMet(detail, winningBid.amount)) {
-      // 2. Crear transacción para puja ganadora
       await this.createTransaction(tx, auctionId, detail, winningBid);
       
-      // 3. Marcar lote como vendido
       await tx.coffeeLot.update({
         where: { id: detail.coffeeLotId },
         data: {
@@ -121,10 +174,8 @@ export class AuctionClosureService {
         },
       });
 
-      // 4. Enviar notificaciones
       await this.sendNotifications(detail, winningBid);
     } else {
-      // 5. Si no hay puja ganadora o no alcanzó reserva
       await tx.coffeeLot.update({
         where: { id: detail.coffeeLotId },
         data: {
@@ -134,28 +185,13 @@ export class AuctionClosureService {
         },
       });
     }
-
-    // 6. Eliminar relación de subasta
-    /* await tx.auctionCoffeeLot.delete({
-      where: {
-        auctionId_coffeeLotId: {
-          auctionId,
-          coffeeLotId: detail.coffeeLotId,
-        },
-      },
-    }); */
   }
 
   private isReservePriceMet(detail: any, winningBidAmount: number): boolean {
     return !detail.reservePrice || winningBidAmount >= detail.reservePrice;
   }
 
-  private async createTransaction(
-    tx: any,
-    auctionId: string,
-    detail: any,
-    winningBid: any
-  ) {
+  private async createTransaction(tx: any, auctionId: string, detail: any, winningBid: any) {
     return tx.transaction.create({
       data: {
         amount: winningBid.amount,
@@ -171,46 +207,20 @@ export class AuctionClosureService {
 
   private async sendNotifications(detail: any, winningBid: any) {
     try {
-
-        console.log('Enviando notificaciones para lote:', detail.coffeeLot.name);
-        
-     /*  // Notificar al comprador
-      await this.mailService.sendAuctionWinNotification(
-        winningBid.user.email,
-        detail.coffeeLot.name,
-        winningBid.amount
-      );*/
-
         await this.emailService.sendAuctionWinNotification(
-      winningBid.user.email,
-      winningBid.user.firstName || 'Estimado/a Cliente',
-      detail.coffeeLot,
-      winningBid,
-      detail.auction
-
-    );
+          winningBid.user.email,
+          winningBid.user.firstName || 'Estimado/a Cliente',
+          detail.coffeeLot,
+          winningBid,
+          detail.auction
+        );
     } catch (error) {
       this.logger.warn('No se pudieron enviar notificaciones:', error);
     }
   }
 
-  // Método para forzar cierre manual si es necesario
   async forceAuctionClosure(auctionId: string) {
     this.logger.warn(`⚠️ Cierre forzado de subasta: ${auctionId}`);
     return this.processAuctionCompletion(auctionId);
   }
-
-/*   private async sendSellerNotification(detail: any, winningBid: any, auction: any) {
-  try {
-    await this.emailService.sendAuctionSaleNotification(
-      detail.coffeeLot.seller.email,
-      detail.coffeeLot.seller.firstName || 'Estimado/a Productor',
-      detail.coffeeLot,
-      winningBid,
-      auction
-    );
-  } catch (error) {
-    this.logger.warn('No se pudo enviar notificación al vendedor:', error);
-  }
-} */
 }
