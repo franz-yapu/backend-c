@@ -54,7 +54,7 @@ app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // Configuración de Swagger http://localhost:3000/api
   const config = new DocumentBuilder()
-    .setTitle('API de Usuarios y Roles')
+    .setTitle('API coffee')
      .setDescription('Documentación de la API Coffee')
     .setVersion(process.env.API_VERSION || '1.0')
     .addServer('/coffee/api') // 👈 importante para que Swagger genere URLs correctas en prod
