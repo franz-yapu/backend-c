@@ -7,11 +7,7 @@ export class ChangePasswordDto {
   @ApiProperty({ example: "userId"  })
   userId: string; // o number, dependiendo de tu DB
 
-  @IsString()
-  @IsNotEmpty()
-  @ApiProperty({ example: 'password123' })
-  currentPassword: string; // Contraseña actual para validación
-
+  
   @IsString()
   @MinLength(6)
   @ApiProperty({ example: 'sample1' })

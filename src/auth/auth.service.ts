@@ -101,16 +101,14 @@ export class AuthService {
   }
 
   async changePassword(changePasswordDto: ChangePasswordDto) {
-    const { userId, currentPassword, newPassword } = changePasswordDto;
+    const { userId, newPassword } = changePasswordDto;
 
     // 1. Validar usuario y contraseña actual
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
-    if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
-      throw new UnauthorizedException('Contraseña actual incorrecta');
-    }
+    
 
     // 2. Hashear nueva contraseña y actualizar
     const hashedPassword = await bcrypt.hash(newPassword, 10);

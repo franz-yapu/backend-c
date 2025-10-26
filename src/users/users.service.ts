@@ -1,10 +1,12 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService,
+      private emailService: EmailService) { }
 
   async createUser(data: {
     email: string;
@@ -110,4 +112,25 @@ export class UsersService {
   async getRoles() {
     return this.prisma.role.findMany();
   }
+
+  async updateUserStatus(id: string, data: any) {
+
+    const user = await this.prisma.user.findUnique({ 
+      where: { id },
+      include: { role: true }
+    });
+
+    if (data.isVerified) {
+      await this.emailService.sendAccountActivationEmail(user);
+    }
+  delete data.roleId;
+  delete data.role;
+
+  return this.prisma.user.update({
+    where: { id },
+    data: data,
+    include: { role: true },
+  });
+}
+
 }

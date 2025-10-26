@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  Put,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -97,4 +98,28 @@ export class UsersController {
   async getRoles() {
     return this.usersService.getRoles();
   }
+
+
+   @Put('updateStatus/:id')
+    @ApiOperation({ summary: 'Update an auction' })
+    @ApiResponse({ 
+      status: 200, 
+      description: 'Auction updated successfully' 
+    })
+    @ApiResponse({ 
+      status: 404, 
+      description: 'Auction not found' 
+    })
+    @ApiParam({ 
+      name: 'id', 
+      description: 'Auction ID', 
+      type: String 
+    })
+    @ApiBody({ type: Object })
+    update(
+      @Param('id') id: string,
+      @Body() updateUserDto: any,
+    ) {
+      return this.usersService.updateUserStatus(id, updateUserDto);
+    }
 }

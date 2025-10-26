@@ -203,172 +203,140 @@ export class EmailService implements OnModuleInit {
     const loginUrl = `${process.env.ENV_FROM_ADDRESS }/login?token=${token}`;
     
     const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          
-          body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            line-height: 1.6; 
-            color: #333333;
-            background-color: #f8f9fa;
-            padding: 20px;
-          }
-          
-          .container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            background: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-          }
-          
-          .header { 
-            background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
-            color: white; 
-            padding: 30px 20px;
-            text-align: center;
-          }
-          
-          .logo {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 10px;
-          }
-          
-          .content {
-            padding: 40px 30px;
-          }
-          
-          .welcome-title {
-            color: #8B4513;
-            font-size: 24px;
-            margin-bottom: 20px;
-            font-weight: 600;
-          }
-          
-          .message {
-            margin-bottom: 25px;
-            font-size: 16px;
-            color: #555555;
-            line-height: 1.7;
-          }
-          
-          .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
-            color: white;
-            padding: 14px 32px;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            margin: 20px 0;
-            text-align: center;
-            transition: transform 0.2s, box-shadow 0.2s;
-          }
-          
-          .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(139, 69, 19, 0.3);
-          }
-          
-          .token-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #8B4513;
-            margin: 25px 0;
-            font-size: 14px;
-            color: #666;
-          }
-          
-          .footer {
-            text-align: center;
-            padding: 25px 20px;
-            background: #f8f9fa;
-            color: #666;
-            font-size: 14px;
-            border-top: 1px solid #e9ecef;
-          }
-          
-          .security-note {
-            font-size: 12px;
-            color: #888;
-            margin-top: 15px;
-            font-style: italic;
-          }
-          
-          .highlight {
-            color: #8B4513;
-            font-weight: 600;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <div class="logo">☕ Café Alborada</div>
-            <p>Donde cada taza cuenta una historia</p>
-          </div>
-          
-          <div class="content">
-            <h1 class="welcome-title">¡Bienvenido a Café Alborada, ${fullName}!</h1>
-            
-            <div class="message">
-              <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <span class="highlight">Café Alborada</span>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
-            </div>
-            
-            <div class="message">
-              <p>Para completar su registro y comenzar a explorar nuestro mundo de sabores, por favor haga clic en el siguiente botón:</p>
-            </div>
-            
-            <div style="text-align: center;">
-              <a href="${loginUrl}" class="cta-button">
-                Confirmar Mi Registro
-              </a>
-            </div>
-            
-            <div class="token-info">
-              <p><strong>Nota importante:</strong> Este enlace es personal e intransferible. Si no solicitó este registro, por favor ignore este mensaje.</p>
-            </div>
-            
-           
-            
-            <div class="message">
-              <p>Estamos aquí para ayudarle en cualquier momento. ¡No dude en contactarnos!</p>
-            </div>
-            
-            <div style="margin-top: 30px;">
-              <p>Atentamente,</p>
-              <p style="font-weight: 600; color: #8B4513;">El equipo de Café Alborada</p>
-            </div>
-          </div>
-          
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Café Alborada. Todos los derechos reservados.</p>
-            <p>Este es un mensaje automático, por favor no responda a este correo.</p>
-            <div class="security-note">
-              Por su seguridad, este enlace expirará en 24 horas.
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
+     <!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      line-height: 1.6; 
+      color: #333333;
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+    
+    .container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      background: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header { 
+      background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+      color: white; 
+      padding: 30px 20px;
+      text-align: center;
+    }
+    
+    .logo {
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    
+    .content {
+      padding: 40px 30px;
+    }
+    
+    .welcome-title {
+      color: #8B4513;
+      font-size: 24px;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    
+    .message {
+      margin-bottom: 25px;
+      font-size: 16px;
+      color: #555555;
+      line-height: 1.7;
+    }
+    
+    .notification-box {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #8B4513;
+      margin: 25px 0;
+      font-size: 16px;
+      color: #666;
+      text-align: center;
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 25px 20px;
+      background: #f8f9fa;
+      color: #666;
+      font-size: 14px;
+      border-top: 1px solid #e9ecef;
+    }
+    
+    .security-note {
+      font-size: 12px;
+      color: #888;
+      margin-top: 15px;
+      font-style: italic;
+    }
+    
+    .highlight {
+      color: #8B4513;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">☕ ${process.env.EMAIL_FROM_NAME}</div>
+      <p>Donde cada taza cuenta una historia</p>
+    </div>
+    
+    <div class="content">
+      <h1 class="welcome-title">¡Bienvenido a ${process.env.EMAIL_FROM_NAME}, ${fullName}!</h1>
+      
+      <div class="message">
+        <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <span class="highlight">${process.env.EMAIL_FROM_NAME}</span>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
+      </div>
+      
+      <div class="notification-box">
+        <p><strong>Su solicitud de registro está siendo procesada.</strong></p>
+        <p>Recibirá una notificación por correo electrónico en las próximas <span class="highlight">24 horas</span> informándole si su registro ha sido validado.</p>
+      </div>
+      
+      <div class="message">
+        <p>Estamos aquí para ayudarle en cualquier momento. ¡No dude en contactarnos!</p>
+      </div>
+      
+      <div style="margin-top: 30px;">
+        <p>Atentamente,</p>
+        <p style="font-weight: 600; color: #8B4513;">El equipo de ${process.env.EMAIL_FROM_NAME}</p>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>&copy; ${new Date().getFullYear()} ${process.env.EMAIL_FROM_NAME}. Todos los derechos reservados.</p>
+      <p>Este es un mensaje automático, por favor no responda a este correo.</p>
+    </div>
+  </div>
+</body>
+</html>
     `;
 
     return this.sendEmail({
       to,
-      subject: `¡Bienvenido a Café Alborada, ${fullName}! Complete su registro`,
+      subject: `¡Bienvenido a ${process.env.EMAIL_FROM_NAME}, ${fullName}! Complete su registro`,
       html,
     });
   }
@@ -611,7 +579,7 @@ export class EmailService implements OnModuleInit {
           <div class="winning-bid">
             <h3 style="margin-bottom: 15px;">💰 Oferta Ganadora</h3>
             <div class="bid-amount">$${winningBid.amount.toFixed(2)}</div>
-            <p>Subasta: <strong>${auction.title}</strong></p>
+            <p>Subasta: <strong>${auction?.title}</strong></p>
           </div>
           
           <div class="next-steps">
@@ -656,4 +624,463 @@ export class EmailService implements OnModuleInit {
     html,
   });
 }
+
+async sendAccountActivationEmail(user: any) {
+  const fullName = `${user.firstName} ${user.lastName}`;
+  return this.sendEmail({
+      to:user.email,
+      subject: `¡Bienvenido a ${process.env.EMAIL_FROM_NAME}, ${fullName}! Complete su registro`,
+     html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      line-height: 1.6; 
+      color: #333333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      min-height: 100vh;
+    }
+    
+    .container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      background: #ffffff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .header { 
+      background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+      color: white; 
+      padding: 40px 20px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 20px 20px;
+      animation: float 6s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(1deg); }
+    }
+    
+    .logo {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      position: relative;
+      display: inline-block;
+    }
+    
+    .logo::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 25%;
+      width: 50%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #FFD700, transparent);
+      border-radius: 2px;
+    }
+    
+    .badge {
+      display: inline-block;
+      background: #FFD700;
+      color: #8B4513;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 14px;
+      margin-top: 10px;
+      box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3);
+    }
+    
+    .content {
+      padding: 50px 40px;
+      background: linear-gradient(to bottom, #ffffff, #fefaf6);
+    }
+    
+    .welcome-title {
+      color: #8B4513;
+      font-size: 28px;
+      margin-bottom: 25px;
+      font-weight: 700;
+      text-align: center;
+      background: linear-gradient(135deg, #8B4513, #D2691E);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .message {
+      margin-bottom: 30px;
+      font-size: 16px;
+      color: #555555;
+      line-height: 1.7;
+      text-align: center;
+    }
+    
+    .success-icon {
+      text-align: center;
+      margin: 30px 0;
+    }
+    
+    .success-icon .circle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #10B981, #059669);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    
+    .credentials-box {
+      background: linear-gradient(135deg, #fef7f0, #faf3eb);
+      border: 2px solid #e9d7c3;
+      border-radius: 15px;
+      padding: 30px;
+      margin: 30px 0;
+      box-shadow: 0 8px 25px rgba(139, 69, 19, 0.1);
+      position: relative;
+    }
+    
+    .credentials-box::before {
+      content: '🔐';
+      position: absolute;
+      top: -15px;
+      left: 30px;
+      background: white;
+      padding: 5px 15px;
+      border-radius: 15px;
+      font-size: 14px;
+      border: 2px solid #e9d7c3;
+    }
+    
+    .credential-item {
+      display: flex;
+      align-items: center;
+      padding: 15px 0;
+      border-bottom: 1px solid #f0e6d8;
+    }
+    
+    .credential-item:last-child {
+      border-bottom: none;
+    }
+    
+    .credential-label {
+      font-weight: 700;
+      color: #8B4513;
+      min-width: 140px;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .credential-value {
+      background: white;
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: 1px solid #e9d7c3;
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      flex: 1;
+      margin-left: 15px;
+      color: #8B4513;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .security-note {
+      background: linear-gradient(135deg, #fef3c7, #fef7ed);
+      border-left: 4px solid #f59e0b;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 25px 0;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+    }
+    
+    .steps-container {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      margin: 30px 0;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+    
+    .step {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      background: #fefaf6;
+      transition: transform 0.2s ease;
+    }
+    
+    .step:hover {
+      transform: translateX(5px);
+      background: #fdf5f0;
+    }
+    
+    .step-number {
+      background: linear-gradient(135deg, #8B4513, #A0522D);
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      margin-right: 15px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 8px rgba(139, 69, 19, 0.3);
+    }
+    
+    .step-content {
+      flex: 1;
+    }
+    
+    .step-title {
+      font-weight: 600;
+      color: #8B4513;
+      margin-bottom: 5px;
+    }
+    
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+      color: white;
+      padding: 16px 40px;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 16px;
+      margin: 20px 0;
+      text-align: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 25px rgba(139, 69, 19, 0.4);
+      border: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .cta-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+    
+    .cta-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 35px rgba(139, 69, 19, 0.5);
+    }
+    
+    .cta-button:hover::before {
+      left: 100%;
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 30px 20px;
+      background: linear-gradient(135deg, #2d3748, #4a5568);
+      color: #cbd5e0;
+      font-size: 14px;
+      border-top: 1px solid #4a5568;
+    }
+    
+    .social-links {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 15px 0;
+    }
+    
+    .social-link {
+      color: #cbd5e0;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+    
+    .social-link:hover {
+      color: #ffffff;
+    }
+    
+    .highlight {
+      background: linear-gradient(135deg, #8B4513, #D2691E);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+    }
+    
+    .contact-info {
+      margin-top: 25px;
+      padding-top: 25px;
+      border-top: 1px solid #e9d7c3;
+      text-align: center;
+    }
+    
+    @media (max-width: 600px) {
+      .content {
+        padding: 30px 20px;
+      }
+      
+      .credential-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .credential-value {
+        margin-left: 0;
+        width: 100%;
+      }
+      
+      .cta-button {
+        width: 100%;
+        padding: 14px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">☕ ${process.env.EMAIL_FROM_NAME || 'Coffee Platform'}</div>
+      <p>Donde cada taza cuenta una historia</p>
+      <div class="badge">✅ Cuenta Verificada</div>
+    </div>
+    
+    <div class="content">
+      <h1 class="welcome-title">¡Bienvenido a la Familia, ${fullName || user.email}!</h1>
+      
+      <div class="success-icon">
+        <div class="circle">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+            <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+      
+      <div class="message">
+        <p>🎉 <strong>¡Excelente noticia!</strong> Su cuenta ha sido <span class="highlight">verificada y activada</span> exitosamente por nuestro equipo administrativo.</p>
+        <p style="margin-top: 15px;">Ahora tiene acceso completo a todas las funcionalidades exclusivas de nuestra plataforma cafetalera.</p>
+      </div>
+
+      <div class="credentials-box">
+        <h3 style="color: #8B4513; margin-bottom: 25px; text-align: center; font-size: 20px;">📋 Sus Credenciales de Acceso</h3>
+        
+        <div class="credential-item">
+          <span class="credential-label">
+            <span>📧</span> Email:
+          </span>
+          <span class="credential-value">${user.email}</span>
+        </div>
+        
+        <div class="credential-item">
+          <span class="credential-label">
+            <span>🔑</span> Contraseña:
+          </span>
+          <span class="credential-value">La que estableció durante el registro</span>
+        </div>
+        
+
+      </div>
+
+      <div class="security-note">
+        <strong>🛡️ Importante - Seguridad de su Cuenta:</strong><br>
+        Por su protección, nunca comparta sus credenciales de acceso. Si olvida su contraseña, utilice la función "¿Olvidó su contraseña?" en la página de login para restablecerla de forma segura.
+      </div>
+
+      <div class="steps-container">
+        <h4 style="color: #8B4513; margin-bottom: 20px; text-align: center; font-size: 18px;">🚀 Comience su Experiencia Cafetalera</h4>
+        
+        <div class="step">
+        
+          <div class="step-content">
+            <div class="step-title">Acceda a la Plataforma</div>
+            <div>Visite: <span class="highlight">${process.env.FRONTEND_URL || 'https://vertexhost.cloud/Coffee/index'}</span></div>
+          </div>
+        </div>
+        
+       
+        
+       
+      </div>
+
+      <div style="text-align: center; margin-top: 40px;">
+        <a href="${process.env.FRONTEND_URL || 'https://vertexhost.cloud/Coffee/index'}" class="cta-button">
+          🚀 Comenzar Ahora
+        </a>
+        <p style="color: #666; font-size: 14px; margin-top: 10px;">Acceso directo y seguro a su cuenta</p>
+      </div>
+
+      <div class="contact-info">
+        <p style="margin-bottom: 15px;">💬 <strong>¿Necesita ayuda?</strong></p>
+        <p>Nuestro equipo de soporte está disponible para asistirle en cualquier momento.</p>
+        <p style="font-weight: 600; color: #8B4513; margin-top: 15px;">
+          Con cariño,<br>El equipo de ${process.env.EMAIL_FROM_NAME || 'Coffee Platform'} ☕
+        </p>
+      </div>
+    </div>
+    
+    <div class="footer">
+     
+      <p>&copy; ${new Date().getFullYear()} ${process.env.EMAIL_FROM_NAME || 'Coffee Platform'}. Todos los derechos reservados.</p>
+      <p style="font-size: 12px; margin-top: 10px; opacity: 0.8;">
+        Este es un mensaje automático, por favor no responda a este correo.<br>
+        Para consultas, contacte a nuestro equipo de soporte.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+
+  `});
+   
+  };
+
+
 }
+

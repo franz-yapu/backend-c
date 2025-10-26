@@ -48,7 +48,7 @@ export class EmailController {
   async healthCheck() {
     return {
       status: 'healthy',
-      service: 'Cafe Alborada Email Service',
+      service: process.env.EMAIL_FROM_NAME+' '+'Email Service',
       timestamp: new Date().toISOString(),
     };
   }
