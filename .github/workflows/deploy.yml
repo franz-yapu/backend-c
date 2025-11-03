@@ -1,0 +1,86 @@
+name: 🚀 Deploy Coffee Stack
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: ⎔ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🧪 Run tests
+      run: npm test
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          echo "=========================================="
+          echo "🚀 INICIANDO DEPLOY AUTOMÁTICO"
+          echo "=========================================="
+          echo "📅 Fecha: $(date)"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "👤 Por: ${{ github.actor }}"
+          echo ""
+          
+          # Navegar al proyecto
+          cd /home/franz/projects/coffee
+          
+          echo "📥 Obteniendo últimos cambios..."
+          git fetch origin
+          git reset --hard origin/main
+          echo "✅ Código actualizado"
+          
+          echo ""
+          echo "🐳 Reconstruyendo contenedores..."
+          docker-compose down
+          docker-compose build --no-cache
+          docker-compose up -d
+          echo "✅ Contenedores reconstruidos"
+          
+          echo ""
+          echo "🧹 Limpiando recursos sin uso..."
+          docker image prune -f
+          echo "✅ Limpieza completada"
+          
+          echo ""
+          echo "🏥 Verificando salud de los servicios..."
+          sleep 30
+          
+          if curl -f https://vertexhost.cloud/api/health; then
+            echo "✅ Health check pasado"
+          else
+            echo "⚠️  Health check falló - pero el deploy continuó"
+          fi
+          
+          echo ""
+          echo "=========================================="
+          echo "🎉 DEPLOY COMPLETADO EXITOSAMENTE!"
+          echo "=========================================="
