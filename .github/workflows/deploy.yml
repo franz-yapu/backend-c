@@ -2,7 +2,7 @@ name: 🚀 Deploy Coffee Stack
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, version_1 ]
 
 jobs:
   test:
@@ -29,7 +29,7 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'|| github.ref == 'refs/heads/version_1')
     
     steps:
     - name: Checkout code
