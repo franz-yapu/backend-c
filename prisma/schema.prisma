@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["views"] 
 }
 
 datasource db {
@@ -241,6 +242,20 @@ model Transaction {
    coffeeLot CoffeeLot @relation(fields: [coffeeLotId], references: [id]) // 👈 Relación directa
 
   @@map("transactions")
+}
+
+
+view UserLog {
+  id        String    
+  userId    String   @map("user_id")
+  action    String
+  module    String
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  metadata  Json?
+  createdAt DateTime @map("created_at")
+
+  @@map("user_logs")
 }
 
 model Product {

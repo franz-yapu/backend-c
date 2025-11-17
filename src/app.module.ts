@@ -19,6 +19,8 @@ import * as path from 'path';
 import { BidsGateway } from './bid/bids.gateway';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EmailModule } from './email/email.module';
+import { UserLogsModule } from './user-logs/user-logs.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 
 
@@ -44,7 +46,9 @@ import { EmailModule } from './email/email.module';
     BidModule,
     TransactionModule,
     CrudGeneratorModule,
-    EmailModule], // Asegúrate que estén todos
+    EmailModule,
+    UserLogsModule,
+    DashboardModule], // Asegúrate que estén todos
   controllers: [AppController],
   providers: [AppService],
 })
