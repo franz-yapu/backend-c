@@ -1,28 +1,9 @@
--- CreateTable
-CREATE TABLE "public"."user_logs" (
-    "id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
-    "action" TEXT NOT NULL,
-    "module" TEXT NOT NULL,
-    "ip_address" TEXT,
-    "user_agent" TEXT,
-    "metadata" JSONB,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "user_logs_pkey" PRIMARY KEY ("id")
-);
-
--- CreateIndex
-CREATE INDEX "user_logs_user_id_created_at_idx" ON "public"."user_logs"("user_id", "created_at");
-
--- AddForeignKey
-ALTER TABLE "public"."user_logs" ADD CONSTRAINT "user_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
 
 
 
 -- Elimina la vista si existe
-DROP VIEW IF EXISTS user_logs;
+/* DROP VIEW IF EXISTS user_logs; */
+
 
 -- Crea la vista con los nombres exactos de columnas
 CREATE OR REPLACE VIEW user_logs AS
