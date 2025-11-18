@@ -26,12 +26,12 @@ export class CreateAuctionDto {
   @ApiProperty({ description: 'Fecha y hora de inicio (ISO string)' })
    @IsISO8601({ strict: true }) // Más estricto que IsDateString
   @IsNotEmpty()
-  startDate: string;
+  startDate: string | Date;
 
   @ApiProperty({ description: 'Fecha y hora de cierre (ISO string)' })
    @IsISO8601({ strict: true }) // Más estricto que IsDateString
   @IsNotEmpty()
-  endDate: string;
+  endDate: string | Date;
 
 
 

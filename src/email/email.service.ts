@@ -95,7 +95,7 @@ export class EmailService implements OnModuleInit {
 
       const mailOptions = {
         from: {
-          name: process.env.EMAIL_FROM_NAME || 'Cafe Alborada',
+          name: process.env.EMAIL_FROM_NAME || 'Café Altura',
           address: process.env.GMAIL_USER,
         },
         to,
@@ -140,13 +140,13 @@ export class EmailService implements OnModuleInit {
       <body>
         <div class="container">
           <div class="header">
-            <h1>☕ Cafe Alborada</h1>
+            <h1>☕ Café Altura</h1>
           </div>
           <div class="content">
             <h2>¡Bienvenido, ${data.firstName,'',  data.lastName}!</h2>
-            <p>Gracias por registrarte en Cafe Alborada.</p>
+            <p>Gracias por registrarte en Café Altura.</p>
             <p>Estamos emocionados de tenerte en nuestra comunidad cafetalera.</p>
-            <p>Saludos,<br>El equipo de Cafe Alborada</p>
+            <p>Saludos,<br>El equipo de Café Altura</p>
             token: ${token}
           </div>
         </div>
@@ -156,7 +156,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: `¡Bienvenido a Cafe Alborada, ${data.firstName,'',  data.lastName}!`,
+      subject: `¡Bienvenido a Café Altura, ${data.firstName,'',  data.lastName}!`,
       html,
     });
   }
@@ -187,7 +187,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: 'Restablece tu contraseña - Cafe Alborada',
+      subject: 'Restablece tu contraseña - Café Altura',
       html,
     });
   }
