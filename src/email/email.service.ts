@@ -317,15 +317,15 @@ export class EmailService implements OnModuleInit {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">☕ Café Alborada</div>
+            <div class="logo">☕ Café Altura</div>
             <p>Donde cada taza cuenta una historia</p>
           </div>
           
           <div class="content">
-            <h1 class="welcome-title">¡Bienvenido a Café Alborada, ${fullName}!</h1>
+            <h1 class="welcome-title">¡Bienvenido a Café Altura, ${fullName}!</h1>
             
             <div class="message">
-              <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <span class="highlight">Café Alborada</span>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
+              <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <span class="highlight">Café Altura</span>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
             </div>
             
             <div class="message">
@@ -350,12 +350,12 @@ export class EmailService implements OnModuleInit {
             
             <div style="margin-top: 30px;">
               <p>Atentamente,</p>
-              <p style="font-weight: 600; color: #8B4513;">El equipo de Café Alborada</p>
+              <p style="font-weight: 600; color: #8B4513;">El equipo de Café Altura</p>
             </div>
           </div>
           
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Café Alborada. Todos los derechos reservados.</p>
+            <p>&copy; ${new Date().getFullYear()} Café Altura. Todos los derechos reservados.</p>
             <p>Este es un mensaje automático, por favor no responda a este correo.</p>
             <div class="security-note">
               Por su seguridad, este enlace expirará en 24 horas.
@@ -368,7 +368,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: `¡Bienvenido a Café Alborada, ${fullName}! Complete su registro`,
+      subject: `¡Bienvenido a Café Altura, ${fullName}! Complete su registro`,
       html,
     });
   }
@@ -553,7 +553,7 @@ export class EmailService implements OnModuleInit {
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">☕ Café Alborada</div>
+          <div class="logo">☕ Café Altura</div>
           <p>Subastas de Café de Especialidad</p>
         </div>
         
@@ -628,18 +628,18 @@ export class EmailService implements OnModuleInit {
             <p><strong>📞 ¿Tienes preguntas?</strong></p>
             <p>Nuestro equipo de atención al cliente está disponible para ayudarte con cualquier consulta sobre tu compra.</p>
             <p style="margin-top: 10px;">
-              <strong>Email:</strong> contacto@cafealborada.com | 
+              <strong>Email:</strong> contacto@cafealtura.com | 
               <strong>Teléfono:</strong> +1 (555) 123-4567
             </p>
           </div>
           
           <div class="message">
-            <p>Gracias por confiar en <span class="highlight">Café Alborada</span> para adquirir cafés de especialidad de la más alta calidad.</p>
+            <p>Gracias por confiar en <span class="highlight">Café Altura</span> para adquirir cafés de especialidad de la más alta calidad.</p>
           </div>
         </div>
         
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} Café Alborada. Todos los derechos reservados.</p>
+          <p>&copy; ${new Date().getFullYear()} Café Altura. Todos los derechos reservados.</p>
           <p>Este es un mensaje automático, por favor no responda a este correo.</p>
           <p style="margin-top: 10px; font-size: 12px; color: #888;">
             Calidad • Transparencia • Tradición
