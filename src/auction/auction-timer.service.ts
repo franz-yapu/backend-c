@@ -16,7 +16,7 @@ export class AuctionTimerService implements OnModuleDestroy {
   private readonly CACHE_TTL = 30000; // 30 segundos
   private readonly CHECK_INTERVAL = 1000; // 1 segundo base
   private readonly EXTENSION_MINUTES = 3;
-  private readonly LAST_MINUTES_THRESHOLD = 5;
+  private readonly LAST_MINUTES_THRESHOLD = 3;
 
   constructor(
     private prisma: PrismaService,
