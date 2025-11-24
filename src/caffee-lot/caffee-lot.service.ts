@@ -16,8 +16,7 @@ export class CoffeeLotsService {
       data: {
         ...createCoffeeLotDto,
         // Actualiza este campo si hay subasta
-      },
-      include: { seller: true },
+      }
     });
 
   
@@ -27,14 +26,14 @@ export class CoffeeLotsService {
 
   async findAll() {
     return this.prisma.coffeeLot.findMany({
-      include: { seller: true, auction: true },
+      include: {  auction: true },
     });
   }
 
   async findOne(id: string) {
     const coffeeLot = await this.prisma.coffeeLot.findUnique({
       where: { id },
-      include: { seller: true, auction: true, auctionDetails:true },
+      include: {  auction: true, auctionDetails:true },
     });
 
     if (!coffeeLot) {
@@ -50,7 +49,7 @@ export class CoffeeLotsService {
     return this.prisma.coffeeLot.update({
       where: { id },
       data: updateCoffeeLotDto,
-      include: { seller: true },
+      
     });
   }
 
@@ -62,12 +61,7 @@ export class CoffeeLotsService {
     });
   }
 
-  async findBySeller(sellerId: string) {
-    return this.prisma.coffeeLot.findMany({
-      where: { sellerId },
-      include: { seller: true },
-    });
-  }
+ 
   async addToAuction(addCoffeeLotToAuctionDto: AddCoffeeLotToAuctionDto) {
     const { auctionId, coffeeLotId, startingPrice, reservePrice } = addCoffeeLotToAuctionDto;
 
@@ -107,9 +101,7 @@ export class CoffeeLotsService {
         },
         include: {
           auction: true,
-          coffeeLot: {
-            include: { seller: true }
-          },
+          coffeeLot: true
         },
       });
 
@@ -140,11 +132,7 @@ export class CoffeeLotsService {
     return this.prisma.auctionCoffeeLot.findMany({
       where: { auctionId },
       include: {
-        coffeeLot: {
-          include: {
-            seller: true
-          }
-        },
+        coffeeLot:true,
         auction: true
       },
       orderBy: {

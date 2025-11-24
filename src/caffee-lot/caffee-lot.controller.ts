@@ -79,13 +79,7 @@ export class CoffeeLotsController {
     return this.coffeeLotsService.remove(id);
   }
 
-  @Get('seller/:sellerId')
-  @ApiOperation({ summary: 'Get coffee lots by seller ID' })
-  @ApiResponse({ status: 200, description: 'List of coffee lots by seller' })
-  @ApiParam({ name: 'sellerId', description: 'Seller ID', type: String })
-  findBySeller(@Param('sellerId', ParseUUIDPipe) sellerId: string) {
-    return this.coffeeLotsService.findBySeller(sellerId);
-  }
+
   @Post('add-to-auction')
   @ApiOperation({ summary: 'Add a coffee lot to an auction' })
   @ApiResponse({ status: 201, description: 'Coffee lot added to auction successfully' })

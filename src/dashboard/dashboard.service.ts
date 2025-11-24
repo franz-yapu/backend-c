@@ -214,7 +214,6 @@ export class DashboardService {
         _count: {
           select: {
             bids: true,
-            coffeeLots: true,
             soldTransactions: true,
             boughtTransactions: true,
           },
@@ -269,7 +268,7 @@ const byRoleWithNames = byRole.map(item => {
     const mostActiveUsers = users
       .map(user => ({
         ...user,
-        totalActivity: Number(user._count.bids) + Number(user._count.coffeeLots),
+        totalActivity: Number(user._count.bids) ,
       }))
       .sort((a, b) => b.totalActivity - a.totalActivity)
       .slice(0, 10);

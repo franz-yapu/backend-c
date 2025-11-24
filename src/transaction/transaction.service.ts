@@ -171,9 +171,7 @@ async findAuctionSales(auctionId: string) {
     include: {
       buyer: true,
       seller: true,
-      coffeeLot: {            // 👈 relación directa al lote
-        include: { seller: true },
-      },
+      coffeeLot: true,
       auction: {
         include: {
           auctionDetails: true,
@@ -212,13 +210,9 @@ async findAuctionSales(auctionId: string) {
       quantityKg: lot.quantity,
       quantityLbs: lot.quantityLbs,
       position: lot.position,
+      seller: lot.seller,
 
-      seller: {
-        id: lot.seller.id,
-        name: `${lot.seller.firstName} ${lot.seller.lastName}`,
-        email: lot.seller.email,
-        company: lot.seller.companyName,
-      },
+
       buyer: {
         id: tx.buyer.id,
         name: `${tx.buyer.firstName} ${tx.buyer.lastName}`,

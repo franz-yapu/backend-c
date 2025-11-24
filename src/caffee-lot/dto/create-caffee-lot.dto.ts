@@ -197,5 +197,5 @@ export class CreateCoffeeLotDto {
   @ApiProperty({ description: 'Seller user ID' })
   @IsString()
   @IsNotEmpty()
-  sellerId: string;
+  seller: string;
 }

@@ -118,11 +118,7 @@ export class AuctionClosureService {
         include: {
           auctionDetails: {
             include: {
-              coffeeLot: {
-                include: {
-                  seller: true,
-                },
-              },
+              coffeeLot: true
             },
           },
         },

@@ -83,7 +83,6 @@ model User {
 
   // Relaciones
   role               Role          @relation(fields: [roleId], references: [id])
-  coffeeLots         CoffeeLot[]
   managedAuctions    Auction[]     @relation("ManagedAuctions")
   sellerAuctions     Auction[]     @relation("SellerAuctions")
   bids               Bid[]
@@ -147,10 +146,10 @@ model CoffeeLot {
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
   // Relaciones
-  sellerId        String                                // Seller user ID
+  seller        String                                // Seller user ID
   auctionId       String?                               // Associated auction ID (if any)
 
-  seller          User        @relation(fields: [sellerId], references: [id])
+
   auction         Auction?    @relation(fields: [auctionId], references: [id])
   auctionDetails  AuctionCoffeeLot[]
   bids            Bid[]
