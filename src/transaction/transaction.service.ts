@@ -286,6 +286,7 @@ async findBuyerWins(buyerId: string) {
         altitude: lot.altitude,
         quantityKg: lot.quantity,
         quantityLbs: lot.quantityLbs,
+        seller:lot.seller,
       },
       seller: {
         id: tx.seller.id,

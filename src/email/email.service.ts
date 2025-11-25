@@ -203,7 +203,7 @@ export class EmailService implements OnModuleInit {
     const loginUrl = `${process.env.ENV_FROM_ADDRESS }/login?token=${token}`;
     
     const html = `
-      <!DOCTYPE html>
+       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
@@ -227,13 +227,13 @@ export class EmailService implements OnModuleInit {
             max-width: 600px; 
             margin: 0 auto; 
             background: #ffffff;
-            border-radius: 12px;
+            
             overflow: hidden;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
           }
           
           .header { 
-            background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+            background:#95c11f;
             color: white; 
             padding: 30px 20px;
             text-align: center;
@@ -250,7 +250,7 @@ export class EmailService implements OnModuleInit {
           }
           
           .welcome-title {
-            color: #8B4513;
+            color: #000;
             font-size: 24px;
             margin-bottom: 20px;
             font-weight: 600;
@@ -265,11 +265,11 @@ export class EmailService implements OnModuleInit {
           
           .cta-button {
             display: inline-block;
-            background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+            background: #95c11f;
             color: white;
             padding: 14px 32px;
             text-decoration: none;
-            border-radius: 8px;
+            
             font-weight: 600;
             font-size: 16px;
             margin: 20px 0;
@@ -309,7 +309,7 @@ export class EmailService implements OnModuleInit {
           }
           
           .highlight {
-            color: #8B4513;
+            color: #95c11f;
             font-weight: 600;
           }
         </style>
@@ -317,15 +317,15 @@ export class EmailService implements OnModuleInit {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">☕ Café Altura</div>
+            <div class="logo">☕ TECAB</div>
             <p>Donde cada taza cuenta una historia</p>
           </div>
           
           <div class="content">
-            <h1 class="welcome-title">¡Bienvenido a Café Altura, ${fullName}!</h1>
+            <h1 class="welcome-title">¡Bienvenido a Tecab, ${fullName}!</h1>
             
             <div class="message">
-              <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <span class="highlight">Café Altura</span>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
+              <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <span class="highlight">Tecab</span>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
             </div>
             
             <div class="message">
@@ -350,12 +350,12 @@ export class EmailService implements OnModuleInit {
             
             <div style="margin-top: 30px;">
               <p>Atentamente,</p>
-              <p style="font-weight: 600; color: #8B4513;">El equipo de Café Altura</p>
+              <p style="font-weight: 600; color: #95c11f;">El equipo de Tecab</p>
             </div>
           </div>
           
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} Café Altura. Todos los derechos reservados.</p>
+            <p>&copy; ${new Date().getFullYear()} TECAB. Todos los derechos reservados.</p>
             <p>Este es un mensaje automático, por favor no responda a este correo.</p>
             <div class="security-note">
               Por su seguridad, este enlace expirará en 24 horas.
@@ -408,13 +408,13 @@ export class EmailService implements OnModuleInit {
           max-width: 650px; 
           margin: 0 auto; 
           background: #ffffff;
-          border-radius: 12px;
+          border-radius: 1px;
           overflow: hidden;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         
         .header { 
-          background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+          background: #95c11f;
           color: white; 
           padding: 30px 20px;
           text-align: center;
@@ -431,7 +431,7 @@ export class EmailService implements OnModuleInit {
         }
         
         .congrats-title {
-          color: #2E7D32;
+          color: #000;
           font-size: 26px;
           margin-bottom: 20px;
           font-weight: 600;
@@ -449,7 +449,7 @@ export class EmailService implements OnModuleInit {
           background: #f8f9fa;
           padding: 25px;
           border-radius: 8px;
-          border-left: 4px solid #8B4513;
+          border-left: 4px solid #95c11f;
           margin: 25px 0;
         }
         
@@ -463,7 +463,7 @@ export class EmailService implements OnModuleInit {
         
         .detail-label {
           font-weight: 600;
-          color: #8B4513;
+          color: #95c11f;
         }
         
         .detail-value {
@@ -472,10 +472,10 @@ export class EmailService implements OnModuleInit {
         }
         
         .winning-bid {
-          background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+          background:#95c11f;
           color: white;
           padding: 20px;
-          border-radius: 8px;
+          
           text-align: center;
           margin: 25px 0;
         }
@@ -531,7 +531,7 @@ export class EmailService implements OnModuleInit {
         }
         
         .highlight {
-          color: #8B4513;
+          color: #95c11f;
           font-weight: 600;
         }
         
@@ -565,7 +565,7 @@ export class EmailService implements OnModuleInit {
           </div>
           
           <div class="lot-details">
-            <h3 style="color: #8B4513; margin-bottom: 20px;">📦 Detalles del Lote Adquirido</h3>
+            <h3 style=" margin-bottom: 20px;">📦 Detalles del Lote Adquirido</h3>
             
             <div class="detail-row">
               <span class="detail-label">Lote de Café:</span>
@@ -634,12 +634,12 @@ export class EmailService implements OnModuleInit {
           </div>
           
           <div class="message">
-            <p>Gracias por confiar en <span class="highlight">Café Altura</span> para adquirir cafés de especialidad de la más alta calidad.</p>
+            <p>Gracias por confiar en <span class="highlight">TECAB</span> para adquirir cafés de especialidad de la más alta calidad.</p>
           </div>
         </div>
         
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} Café Altura. Todos los derechos reservados.</p>
+          <p>&copy; ${new Date().getFullYear()} TECAB. Todos los derechos reservados.</p>
           <p>Este es un mensaje automático, por favor no responda a este correo.</p>
           <p style="margin-top: 10px; font-size: 12px; color: #888;">
             Calidad • Transparencia • Tradición
