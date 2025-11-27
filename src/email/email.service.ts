@@ -95,7 +95,7 @@ export class EmailService implements OnModuleInit {
 
       const mailOptions = {
         from: {
-          name: process.env.EMAIL_FROM_NAME || 'Café Altura',
+          name: process.env.EMAIL_FROM_NAME || 'TECAB',
           address: process.env.GMAIL_USER,
         },
         to,
@@ -140,13 +140,13 @@ export class EmailService implements OnModuleInit {
       <body>
         <div class="container">
           <div class="header">
-            <h1>☕ Café Altura</h1>
+            <h1>☕ TECAB</h1>
           </div>
           <div class="content">
             <h2>¡Bienvenido, ${data.firstName,'',  data.lastName}!</h2>
-            <p>Gracias por registrarte en Café Altura.</p>
+            <p>Gracias por registrarte en TECAB.</p>
             <p>Estamos emocionados de tenerte en nuestra comunidad cafetalera.</p>
-            <p>Saludos,<br>El equipo de Café Altura</p>
+            <p>Saludos,<br>El equipo de TECAB</p>
             token: ${token}
           </div>
         </div>
@@ -156,7 +156,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: `¡Bienvenido a Café Altura, ${data.firstName,'',  data.lastName}!`,
+      subject: `¡Bienvenido a TECAB, ${data.firstName,'',  data.lastName}!`,
       html,
     });
   }
@@ -187,7 +187,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: 'Restablece tu contraseña - Café Altura',
+      subject: 'Restablece tu contraseña - TECAB',
       html,
     });
   }
@@ -317,7 +317,7 @@ export class EmailService implements OnModuleInit {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">☕ TECAB</div>
+            <div class="logo">TECAB Bolivia</div>
             <p>Donde cada taza cuenta una historia</p>
           </div>
           
@@ -368,7 +368,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: `¡Bienvenido a Café Altura, ${fullName}! Complete su registro`,
+      subject: `¡Bienvenido a TECAB, ${fullName}! Complete su registro`,
       html,
     });
   }
@@ -381,10 +381,10 @@ export class EmailService implements OnModuleInit {
   auction: any
 ): Promise<EmailResponse> {
   const to = buyerEmail;
-  const subject = `🎉 ¡Felicidades! Has ganado la subasta - ${coffeeLot.name}`;
+  const subject = `¡Felicidades! Has ganado la subasta - ${coffeeLot.name}`;
   
   const html = `
-    <!DOCTYPE html>
+     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
@@ -475,7 +475,6 @@ export class EmailService implements OnModuleInit {
           background:#95c11f;
           color: white;
           padding: 20px;
-          
           text-align: center;
           margin: 25px 0;
         }
@@ -484,6 +483,32 @@ export class EmailService implements OnModuleInit {
           font-size: 32px;
           font-weight: bold;
           margin: 10px 0;
+        }
+        
+        .bid-details {
+          display: flex;
+          justify-content: space-around;
+          margin-top: 20px;
+          flex-wrap: wrap;
+        }
+        
+        .bid-item {
+          margin: 10px;
+          padding: 15px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
+          min-width: 150px;
+        }
+        
+        .bid-label {
+          font-size: 14px;
+          opacity: 0.9;
+          margin-bottom: 5px;
+        }
+        
+        .bid-value {
+          font-size: 18px;
+          font-weight: bold;
         }
         
         .next-steps {
@@ -547,13 +572,17 @@ export class EmailService implements OnModuleInit {
           .congrats-title {
             font-size: 22px;
           }
+          
+          .bid-details {
+            flex-direction: column;
+          }
         }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">☕ Café Altura</div>
+          <div class="logo">TECAB Bolivia</div>
           <p>Subastas de Café de Especialidad</p>
         </div>
         
@@ -565,7 +594,7 @@ export class EmailService implements OnModuleInit {
           </div>
           
           <div class="lot-details">
-            <h3 style=" margin-bottom: 20px;">📦 Detalles del Lote Adquirido</h3>
+            <h3 style=" margin-bottom: 20px;"> Detalles del Lote Adquirido</h3>
             
             <div class="detail-row">
               <span class="detail-label">Lote de Café:</span>
@@ -574,7 +603,7 @@ export class EmailService implements OnModuleInit {
             
             <div class="detail-row">
               <span class="detail-label">Productor:</span>
-              <span class="detail-value">${coffeeLot.producerName || 'No especificado'}</span>
+              <span class="detail-value">${coffeeLot.seller || 'No especificado'}</span>
             </div>
             
             <div class="detail-row">
@@ -609,13 +638,30 @@ export class EmailService implements OnModuleInit {
           </div>
           
           <div class="winning-bid">
-            <h3 style="margin-bottom: 15px;">💰 Oferta Ganadora</h3>
-            <div class="bid-amount">$${winningBid.amount.toFixed(2)}</div>
-            <p>Subasta: <strong>${auction.title}</strong></p>
+            <h3 style="margin-bottom: 15px;"> Oferta Ganadora</h3>
+            
+            <div class="bid-details">
+              <div class="bid-item">
+                <div class="bid-label">Precio por libra</div>
+                <div class="bid-value">$${winningBid.amount.toFixed(2)}</div>
+              </div>
+              
+              <div class="bid-item">
+                <div class="bid-label">Cantidad total</div>
+                <div class="bid-value">${coffeeLot.quantityLbs} lbs</div>
+              </div>
+              
+              <div class="bid-item">
+                <div class="bid-label">Valor total</div>
+                <div class="bid-amount">$${(winningBid.amount * coffeeLot.quantityLbs).toFixed(2)}</div>
+              </div>
+            </div>
+            
+            <p style="margin-top: 15px;">Subasta: <strong>${auction.title}</strong></p>
           </div>
           
           <div class="next-steps">
-            <h3 style="color: #2196F3; margin-bottom: 15px;">📝 Próximos Pasos</h3>
+            <h3 style="color: #2196F3; margin-bottom: 15px;"> Próximos Pasos</h3>
             <ul class="steps-list">
               <li><strong>Procesamiento del Pago:</strong> Nuestro equipo se contactará contigo en las próximas 24 horas para coordinar el pago.</li>
               <li><strong>Documentación:</strong> Recibirás la documentación completa del lote y certificaciones de calidad.</li>
@@ -625,11 +671,11 @@ export class EmailService implements OnModuleInit {
           </div>
           
           <div class="contact-info">
-            <p><strong>📞 ¿Tienes preguntas?</strong></p>
+            <p><strong>¿Tienes preguntas?</strong></p>
             <p>Nuestro equipo de atención al cliente está disponible para ayudarte con cualquier consulta sobre tu compra.</p>
             <p style="margin-top: 10px;">
-              <strong>Email:</strong> contacto@cafealtura.com | 
-              <strong>Teléfono:</strong> +1 (555) 123-4567
+              <strong>Email:</strong> contact@hirrobrothers.com | 
+              <strong>Teléfono:</strong> +591 68086298
             </p>
           </div>
           

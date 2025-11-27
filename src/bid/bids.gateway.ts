@@ -6,12 +6,14 @@ import {
   OnGatewayDisconnect,
   SubscribeMessage,
   MessageBody,
-  ConnectedSocket
+  ConnectedSocket,
+
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { BidsService } from './bid.service';
 import { AuctionClosureService } from '../auction/auction-closure.service';
 import { CreateBidDto } from './dto/create-bid.dto';
+import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: {
@@ -20,6 +22,8 @@ import { CreateBidDto } from './dto/create-bid.dto';
   namespace: '/bids',
 })
 export class BidsGateway {
+  private readonly logger = new Logger(BidsGateway.name);
+  
   constructor(
     private readonly bidsService: BidsService,
     private readonly auctionClosureService: AuctionClosureService,
@@ -36,8 +40,8 @@ export class BidsGateway {
     try {
       const bid = await this.bidsService.create(createBidDto);
       
-      // NOTA: Ya NO verificamos extensión inmediata aquí
-      // La extensión ahora ocurre solo cuando el tiempo llega a 0
+      // ✅ NUEVA LÓGICA: Verificar extensión inmediata después de cada puja
+      await this.checkAndExtendAuctionImmediately(createBidDto.auctionId);
       
       // Notifica a todos en la sala sobre la nueva puja
       this.server.to(`auction-${createBidDto.auctionId}`).emit('newBid', bid);
@@ -60,21 +64,49 @@ export class BidsGateway {
     }
   }
 
-  // Nuevo método para notificar extensiones (será llamado por el AuctionClosureService)
+  // ✅ NUEVO MÉTODO: Verificar y extender inmediatamente
+  private async checkAndExtendAuctionImmediately(auctionId: string) {
+    try {
+      const auction = await this.bidsService.getAuction(auctionId);
+      
+      if (!auction || auction.status !== 'ACTIVE') {
+        return;
+      }
+
+      const now = new Date();
+      const endDate = new Date(auction.endDate);
+      const timeRemaining = endDate.getTime() - now.getTime();
+
+      // Solo extender si quedan menos de 3 minutos
+      if (timeRemaining <= 3 * 60 * 1000) {
+        const newEndDate = new Date(Date.now() + 3 * 60 * 1000);
+        
+        await this.bidsService.extendAuction(auctionId, newEndDate);
+        
+        this.logger.log(`⏰✅ Subasta ${auctionId} extendida INMEDIATAMENTE por puja en últimos 3 minutos`);
+        await this.notifyAuctionExtension(auctionId, newEndDate);
+      }
+    } catch (error) {
+      this.logger.error('Error en checkAndExtendAuctionImmediately:', error);
+    }
+  }
+
+  // Métodos existentes sin cambios...
   async notifyAuctionExtension(auctionId: string, newEndDate: Date) {
-     console.log(`📢 Emitiendo auctionExtended para subasta ${auctionId}`);
-  console.log(`🕒 Nueva fecha de fin: ${newEndDate}`);
+    this.logger.log(`📢 Emitiendo auctionExtended para subasta ${auctionId}`);
+    this.logger.log(`🕒 Nueva fecha de fin: ${newEndDate}`);
+    
     this.server.to(`auction-${auctionId}`).emit('auctionExtended', {
       auctionId: auctionId,
       newEndDate: newEndDate,
       extendedBy: '3 minutos',
-      reason: 'Actividad de pujas en los últimos 5 minutos'
+      reason: 'Puja realizada en los últimos 3 minutos de la subasta'
     });
   }
 
-    async notifyAuctionClosed(auctionId: string) {
-      console.log(`📢 Emitiendo auctionClosed para subasta ${auctionId}`);
-  
+  async notifyAuctionClosed(auctionId: string) {
+    this.logger.log(`📢 Emitiendo auctionClosed para subasta ${auctionId}`);
+
     this.server.to(`auction-${auctionId}`).emit('auctionClosed', {
       auctionId: auctionId,
       closedAt: new Date(),
@@ -85,14 +117,14 @@ export class BidsGateway {
   @SubscribeMessage('joinAuctionRoom')
   handleJoinAuctionRoom(client: Socket, auctionId: string) {
     client.join(`auction-${auctionId}`);
-    console.log(`👥 Client ${client.id} joined auction room: ${auctionId}`);
+    this.logger.log(`👥 Client ${client.id} joined auction room: ${auctionId}`);
     client.emit('joinedRoom', `Joined auction room: ${auctionId}`);
   }
 
   @SubscribeMessage('leaveAuctionRoom')
   handleLeaveAuctionRoom(client: Socket, auctionId: string) {
     client.leave(`auction-${auctionId}`);
-    console.log(`👋 Client ${client.id} left auction room: ${auctionId}`);
+    this.logger.log(`👋 Client ${client.id} left auction room: ${auctionId}`);
     client.emit('leftRoom', `Left auction room: ${auctionId}`);
   }
 }
