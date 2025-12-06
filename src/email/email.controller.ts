@@ -13,14 +13,14 @@ export class EmailController {
     const email = this.validateEmail(body.email);
     
     const html = `
-      <h1>✅ Email Test - TECAB</h1>
+      <h1>✅ Email Test -  Café Alborada</h1>
       <p>Este es un email de prueba para verificar que el servicio está funcionando correctamente.</p>
       <p><strong>Fecha:</strong> ${new Date().toLocaleString()}</p>
     `;
 
     return this.emailService.sendEmail({
       to: email,
-      subject: 'Prueba de Email - TECAB',
+      subject: 'Prueba de Email -  Café Alborada',
       html,
     });
   }
@@ -48,7 +48,7 @@ export class EmailController {
   async healthCheck() {
     return {
       status: 'healthy',
-      service: 'TECAB Email Service',
+      service: ' Café Alborada Email Service',
       timestamp: new Date().toISOString(),
     };
   }

@@ -95,7 +95,7 @@ export class EmailService implements OnModuleInit {
 
       const mailOptions = {
         from: {
-          name: process.env.EMAIL_FROM_NAME || 'TECAB',
+          name: process.env.EMAIL_FROM_NAME || ' Café Alborada',
           address: process.env.GMAIL_USER,
         },
         to,
@@ -140,13 +140,13 @@ export class EmailService implements OnModuleInit {
       <body>
         <div class="container">
           <div class="header">
-            <h1>☕ TECAB</h1>
+            <h1>☕  Café Alborada</h1>
           </div>
           <div class="content">
             <h2>¡Bienvenido, ${data.firstName,'',  data.lastName}!</h2>
-            <p>Gracias por registrarte en TECAB.</p>
+            <p>Gracias por registrarte en  Café Alborada.</p>
             <p>Estamos emocionados de tenerte en nuestra comunidad cafetalera.</p>
-            <p>Saludos,<br>El equipo de TECAB</p>
+            <p>Saludos,<br>El equipo de  Café Alborada</p>
             token: ${token}
           </div>
         </div>
@@ -156,7 +156,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: `¡Bienvenido a TECAB, ${data.firstName,'',  data.lastName}!`,
+      subject: `¡Bienvenido a  Café Alborada, ${data.firstName,'',  data.lastName}!`,
       html,
     });
   }
@@ -187,7 +187,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: 'Restablece tu contraseña - TECAB',
+      subject: 'Restablece tu contraseña -  Café Alborada',
       html,
     });
   }
@@ -317,15 +317,15 @@ export class EmailService implements OnModuleInit {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">TECAB Bolivia</div>
+            <div class="logo"> Café Alborada Bolivia</div>
             <p>Donde cada taza cuenta una historia</p>
           </div>
           
           <div class="content">
-            <h1 class="welcome-title">¡Bienvenido a Tecab, ${fullName}!</h1>
+            <h1 class="welcome-title">¡Bienvenido a  Café Alborada, ${fullName}!</h1>
             
             <div class="message">
-              <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <span class="highlight">Tecab</span>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
+              <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <span class="highlight"> Café Alborada</span>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
             </div>
             
             <div class="message">
@@ -350,12 +350,12 @@ export class EmailService implements OnModuleInit {
             
             <div style="margin-top: 30px;">
               <p>Atentamente,</p>
-              <p style="font-weight: 600; color: #95c11f;">El equipo de Tecab</p>
+              <p style="font-weight: 600; color: #95c11f;">El equipo de  Café Alborada</p>
             </div>
           </div>
           
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} TECAB. Todos los derechos reservados.</p>
+            <p>&copy; ${new Date().getFullYear()}  Café Alborada. Todos los derechos reservados.</p>
             <p>Este es un mensaje automático, por favor no responda a este correo.</p>
             <div class="security-note">
               Por su seguridad, este enlace expirará en 24 horas.
@@ -368,7 +368,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: `¡Bienvenido a TECAB, ${fullName}! Complete su registro`,
+      subject: `¡Bienvenido a  Café Alborada, ${fullName}! Complete su registro`,
       html,
     });
   }
@@ -582,7 +582,7 @@ export class EmailService implements OnModuleInit {
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">TECAB Bolivia</div>
+          <div class="logo"> Café Alborada Bolivia</div>
           <p>Subastas de Café de Especialidad</p>
         </div>
         
@@ -680,12 +680,12 @@ export class EmailService implements OnModuleInit {
           </div>
           
           <div class="message">
-            <p>Gracias por confiar en <span class="highlight">TECAB</span> para adquirir cafés de especialidad de la más alta calidad.</p>
+            <p>Gracias por confiar en <span class="highlight"> Café Alborada</span> para adquirir cafés de especialidad de la más alta calidad.</p>
           </div>
         </div>
         
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} TECAB. Todos los derechos reservados.</p>
+          <p>&copy; ${new Date().getFullYear()}  Café Alborada. Todos los derechos reservados.</p>
           <p>Este es un mensaje automático, por favor no responda a este correo.</p>
           <p style="margin-top: 10px; font-size: 12px; color: #888;">
             Calidad • Transparencia • Tradición
