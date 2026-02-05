@@ -13,7 +13,7 @@ export class UsersService {
     lastName?: string;
     roleName?: string;
     companyName?: string;
-    phone?: number;
+    phone: number;
     city?: string;
     country?: string;
     address?: string;
@@ -37,7 +37,8 @@ export class UsersService {
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
-
+     console.log(data);
+     
     return this.prisma.user.create({
       data: {
         email: data.email,

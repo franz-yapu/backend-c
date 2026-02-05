@@ -254,4 +254,103 @@ export class BidsService {
       data: { endDate: newEndDate }
     });
   }
+
+   async getCurrentPrice(auctionId: string, coffeeLotId: string): Promise<number> {
+    const highestBid = await this.prisma.bid.findFirst({
+      where: {
+        auctionId,
+        coffeeLotId,
+      },
+      orderBy: {
+        amount: 'desc',
+      },
+      select: {
+        amount: true,
+      },
+    });
+
+    if (highestBid) {
+      return highestBid.amount;
+    }
+
+    // Si no hay pujas, obtener precio inicial del lote
+    const auctionDetail = await this.prisma.auctionCoffeeLot.findFirst({
+      where: {
+        auctionId,
+        coffeeLotId,
+      },
+      select: {
+        startingPrice: true,
+      },
+    });
+
+    return auctionDetail?.startingPrice || 0;
+  }
+
+  async createWithOptimisticLock(createBidDto: CreateBidDto): Promise<any> {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Verificar precio actual dentro de la transacción
+      const currentPrice = await this.getCurrentPrice(
+        createBidDto.auctionId,
+        createBidDto.coffeeLotId
+      );
+
+      // 2. Validar que el monto sea mayor
+      if (createBidDto.amount <= currentPrice) {
+        throw new Error(`El monto debe ser mayor al precio actual ($${currentPrice})`);
+      }
+
+      // 3. Crear la puja
+      const bid = await tx.bid.create({
+        data: {
+          amount: createBidDto.amount,
+          auctionId: createBidDto.auctionId,
+          coffeeLotId: createBidDto.coffeeLotId,
+          userId: createBidDto.userId,
+        },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              companyName: true,
+            },
+          },
+        },
+      });
+
+      // 4. Actualizar precio actual en auctionCoffeeLot
+      await tx.auctionCoffeeLot.updateMany({
+        where: {
+          auctionId: createBidDto.auctionId,
+          coffeeLotId: createBidDto.coffeeLotId,
+        },
+        data: {
+          currentPrice: createBidDto.amount,
+        },
+      });
+
+      return bid;
+    }, {
+      maxWait: 5000, // Tiempo máximo de espera
+      timeout: 10000, // Timeout de la transacción
+    });
+  }
+
+  async isWinningBid(auctionId: string, coffeeLotId: string, bidId: string): Promise<boolean> {
+    const highestBid = await this.prisma.bid.findFirst({
+      where: {
+        auctionId,
+        coffeeLotId,
+      },
+      orderBy: {
+        amount: 'desc',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return highestBid?.id === bidId;
+  }
 }

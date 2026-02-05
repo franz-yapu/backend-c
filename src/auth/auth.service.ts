@@ -82,7 +82,7 @@ export class AuthService {
       throw new ConflictException('El correo ya está registrado');
     }
 
-    // Crear usuario y enviar correo
+    // Crear usuario y enviar correos
     try {
       const user = await this.usersService.createUser(createUserDto);
       const token = this.jwtService.sign({ email: user.email }, { expiresIn: '744h' });

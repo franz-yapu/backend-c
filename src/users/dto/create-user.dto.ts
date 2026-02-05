@@ -32,7 +32,7 @@ export class CreateUserDto {
   @ApiProperty({ example: '456456', required: false })
   @IsOptional()
   @IsNumber()
-  phone?: number;
+  phone: number;
 
   @ApiProperty({ example: '456456', required: false })
   @IsOptional()
