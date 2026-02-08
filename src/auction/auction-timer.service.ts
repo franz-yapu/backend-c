@@ -25,7 +25,7 @@ export class AuctionTimerService implements OnModuleDestroy {
   private async initializeActiveAuctions() {
     try {
       const activeAuctions = await this.prisma.auction.findMany({
-        where: { 
+        where: {
           status: AuctionStatus.ACTIVE,
           isActive: true
         }
@@ -46,9 +46,15 @@ export class AuctionTimerService implements OnModuleDestroy {
     }, this.CHECK_INTERVAL);
   }
 
+  private getPreciseTime(): Date {
+    // Podrías usar NTP o servicio de tiempo si es crítico
+    return new Date();
+  }
+
   private async checkActiveAuctions() {
-    const now = new Date();
-    
+    const now = this.getPreciseTime();
+
+
     for (const auctionId of this.activeAuctions) {
       try {
         const auction = await this.prisma.auction.findUnique({
@@ -60,9 +66,21 @@ export class AuctionTimerService implements OnModuleDestroy {
           this.activeAuctions.delete(auctionId);
           continue;
         }
-
         const endDate = new Date(auction.endDate);
         const timeRemaining = endDate.getTime() - now.getTime();
+        // Emitir actualización de tiempo periódicamente
+        if (timeRemaining > 0 && timeRemaining % 30000 < 1000) {
+          // Esto emite aproximadamente cada 30 segundos, está bien
+          this.bidsGateway.server.to(`auction-${auctionId}`).emit('timeSync', {
+            auctionId,
+            serverTime: now.toISOString(),
+            endDate: auction.endDate,
+            timeRemaining,
+            timestamp: Date.now()
+          });
+        }
+
+
 
         // Solo procesar cuando el tiempo se acaba (1 segundo de margen)
         if (timeRemaining <= 1000 && timeRemaining > 0) {

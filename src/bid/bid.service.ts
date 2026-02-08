@@ -288,7 +288,8 @@ export class BidsService {
   }
 
   async createWithOptimisticLock(createBidDto: CreateBidDto): Promise<any> {
-    return this.prisma.$transaction(async (tx) => {
+    const TRANSACTION_TIMEOUT = 15000;
+    return this.prisma.$transaction(async (tx) => { 
       // 1. Verificar precio actual dentro de la transacción
       const currentPrice = await this.getCurrentPrice(
         createBidDto.auctionId,
@@ -333,7 +334,7 @@ export class BidsService {
       return bid;
     }, {
       maxWait: 5000, // Tiempo máximo de espera
-      timeout: 10000, // Timeout de la transacción
+       timeout: TRANSACTION_TIMEOUT, // Timeout ajustable
     });
   }
 

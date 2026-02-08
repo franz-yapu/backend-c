@@ -55,7 +55,6 @@ export class TransactionsService {
       include: {
         auction: true,
         buyer: true,
-        seller: true,
         coffeeLot: true,
       },
     });
@@ -66,7 +65,6 @@ export class TransactionsService {
       include: {
         auction: true,
         buyer: true,
-        seller: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -80,7 +78,6 @@ export class TransactionsService {
       include: {
         auction: true,
         buyer: true,
-        seller: true,
       },
     });
 
@@ -100,7 +97,6 @@ export class TransactionsService {
       include: {
         auction: true,
         buyer: true,
-        seller: true,
       },
     });
   }
@@ -135,7 +131,6 @@ export class TransactionsService {
       where: { auctionId },
       include: {
         buyer: true,
-        seller: true,
         
       },
     });
@@ -156,7 +151,7 @@ export class TransactionsService {
           },
         },
         buyer: true,
-        seller: true,
+        
       },
       orderBy: {
         createdAt: 'desc',
@@ -170,7 +165,6 @@ async findAuctionSales(auctionId: string) {
     where: { auctionId, status: "COMPLETED" },
     include: {
       buyer: true,
-      seller: true,
       coffeeLot: true,
       auction: {
         include: {
@@ -241,7 +235,6 @@ async findBuyerWins(buyerId: string) {
     },
     include: {
       buyer: true,
-      seller: true,
       coffeeLot: true,
       auction: {
         include: {
@@ -288,12 +281,7 @@ async findBuyerWins(buyerId: string) {
         quantityLbs: lot.quantityLbs,
         seller:lot.seller,
       },
-      seller: {
-        id: tx.seller.id,
-        name: `${tx.seller.firstName} ${tx.seller.lastName}`,
-        email: tx.seller.email,
-        company: tx.seller.companyName,
-      },
+
       buyer: {
         id: tx.buyer.id,
         name: `${tx.buyer.firstName} ${tx.buyer.lastName}`,

@@ -214,7 +214,6 @@ export class DashboardService {
         _count: {
           select: {
             bids: true,
-            soldTransactions: true,
             boughtTransactions: true,
           },
         },

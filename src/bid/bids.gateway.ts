@@ -19,30 +19,187 @@ import { Logger } from '@nestjs/common';
   },
   namespace: '/bids',
 })
-export class BidsGateway {
+export class BidsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(BidsGateway.name);
+  private readonly clientConnections = new Map<string, {
+    lastPing: number;
+    latency: number;
+    room: string;
+  }>();
+
+  private readonly bidBuffer = new Map<string, Array<{
+    bidData: CreateBidDto;
+    client: Socket;
+    timestamp: number;
+  }>>();
+
   private readonly pendingBids = new Map<string, Promise<any>>(); // Para manejar condiciones de carrera
-  
+  private heartbeatInterval: NodeJS.Timeout;
+  private inactiveCheckInterval: NodeJS.Timeout;
+  private isServerReady = false;
+
+  private setupHeartbeat() {
+    // Limpiar intervalo anterior si existe
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+    
+    // Enviar ping cada 30 segundos
+    this.heartbeatInterval = setInterval(() => {
+      if (this.server) {
+        this.server.emit('ping', {
+          timestamp: Date.now(),
+          serverTime: new Date().toISOString()
+        });
+         this.logger.log('📡 Ping enviado a todos los clientes');
+      }
+    }, 30000);
+  }
+
+  private setupInactiveCheck() {
+    // Limpiar intervalo anterior si existe
+    if (this.inactiveCheckInterval) {
+      clearInterval(this.inactiveCheckInterval);
+    }
+    
+    // Verificar conexiones inactivas cada 30 segundos
+    this.inactiveCheckInterval = setInterval(() => {
+      try {
+        this.checkInactiveConnections();
+      } catch (error) {
+        this.logger.error('Error in checkInactiveConnections:', error);
+      }
+    }, 30000);
+  }
+
   constructor(
     private readonly bidsService: BidsService,
     private readonly auctionClosureService: AuctionClosureService,
-  ) {}
+  ) {
+    // Inicializar después de un breve delay para asegurar que el servidor esté listo
+    setTimeout(() => {
+      this.setupHeartbeat();
+      this.setupInactiveCheck();
+      this.logger.log('✅ WebSocket server initialized with heartbeat and connection monitoring');
+    }, 2000);
+  }
 
   @WebSocketServer()
   server: Server;
+
+  handleConnection(client: Socket) {
+    this.logger.log(`🔌 Client connected: ${client.id}`);
+    this.isServerReady = true;
+
+    this.clientConnections.set(client.id, {
+      lastPing: Date.now(),
+      latency: 0,
+      room: ''
+    });
+
+    // Enviar ping inmediato
+    client.emit('ping', { timestamp: Date.now() });
+  }
+
+  handleDisconnect(client: Socket) {
+    this.logger.log(`🔌 Client disconnected: ${client.id}`);
+    this.clientConnections.delete(client.id);
+  }
+
+private disconnectInactiveClient(clientId: string) {
+  try {
+    // Verificar que el servidor y sockets existan
+    if (!this.server || !this.server.sockets) {
+      this.clientConnections.delete(clientId);
+      return;
+    }
+    
+    let client: Socket | undefined;
+    
+    // Intentar diferentes formas según la versión de socket.io
+    if (this.server.sockets.sockets && this.server.sockets.sockets.get) {
+      // socket.io v4+ - usar get()
+      client = this.server.sockets.sockets.get(clientId);
+    } else if (this.server.sockets.sockets && typeof this.server.sockets.sockets.values === 'function') {
+      // socket.io v3 - iterar sobre los valores
+      try {
+        for (const socket of this.server.sockets.sockets.values()) {
+          if (socket.id === clientId) {
+            client = socket;
+            break;
+          }
+        }
+      } catch (error) {
+        this.logger.error(`Error iterating sockets for client ${clientId}:`, error);
+      }
+    }
+    
+    if (client && client.connected) {
+      this.logger.warn(`⚠️ Disconnecting inactive client: ${clientId}`);
+      try {
+        client.disconnect(true);
+      } catch (disconnectError) {
+        this.logger.error(`Error disconnecting client ${clientId}:`, disconnectError);
+      }
+    }
+  } catch (error) {
+    this.logger.error(`Error in disconnectInactiveClient for ${clientId}:`, error);
+  } finally {
+    // Siempre eliminar del mapa de conexiones
+    this.clientConnections.delete(clientId);
+  }
+}
+
+private checkInactiveConnections() {
+  // Verificar que el servidor esté listo y disponible
+  if (!this.isServerReady || !this.server) {
+    return;
+  }
+  
+  try {
+    const now = Date.now();
+    const INACTIVE_THRESHOLD = 45000; // 45 segundos
+
+    // Crear una copia de las keys para evitar problemas de modificación durante la iteración
+    const clientIds = Array.from(this.clientConnections.keys());
+    
+    for (const clientId of clientIds) {
+      const connection = this.clientConnections.get(clientId);
+      if (!connection) continue;
+      
+      if (now - connection.lastPing > INACTIVE_THRESHOLD) {
+        this.disconnectInactiveClient(clientId);
+      }
+    }
+  } catch (error) {
+    this.logger.error('Error in checkInactiveConnections:', error);
+  }
+}
 
   @SubscribeMessage('placeBid')
   async handlePlaceBid(
     @MessageBody() createBidDto: CreateBidDto,
     @ConnectedSocket() client: Socket,
   ) {
+    const clientData = this.clientConnections.get(client.id);
+    const HIGH_LATENCY_THRESHOLD = 1000; // 1 segundo
+
+    if (clientData && clientData.latency > HIGH_LATENCY_THRESHOLD) {
+      this.logger.warn(`⚠️ High latency detected for client ${client.id}: ${clientData.latency}ms`);
+
+      // Notificar al cliente sobre latencia alta
+      client.emit('highLatencyWarning', {
+        latency: clientData.latency,
+        message: 'Tu conexión es lenta. Las pujas pueden tardar en procesarse.'
+      });
+    }
     const bidKey = `${createBidDto.auctionId}-${createBidDto.coffeeLotId}`;
-    
+
     // Evitar condiciones de carrera: procesar una puja a la vez por lote
     if (this.pendingBids.has(bidKey)) {
-      client.emit('bidResponse', { 
-        event: 'bidError', 
-        data: 'Ya hay una puja en proceso para este lote. Intenta nuevamente en un momento.' 
+      client.emit('bidResponse', {
+        event: 'bidError',
+        data: 'Ya hay una puja en proceso para este lote. Intenta nuevamente en un momento.'
       });
       return;
     }
@@ -51,34 +208,36 @@ export class BidsGateway {
       // Crear promesa para manejar la puja
       const bidPromise = this.processBidWithRaceConditionProtection(createBidDto, client);
       this.pendingBids.set(bidKey, bidPromise);
-      
+
       const result = await bidPromise;
-      
+
       // Notificar a todos en la sala sobre la nueva puja
       this.server.to(`auction-${createBidDto.auctionId}`).emit('newBid', {
         ...result.bid,
         timestamp: new Date().toISOString(),
         isWinningBid: result.isWinningBid,
         currentPrice: result.currentPrice,
+        serverTimestamp: Date.now(),
       });
 
       // Emitir al cliente que hizo la puja
-      client.emit('bidResponse', { 
-        event: 'bidAccepted', 
-        data: result.bid, 
+      client.emit('bidResponse', {
+        event: 'bidAccepted',
+        data: result.bid,
         lastBids: result.lastBids,
         currentPrice: result.currentPrice,
         isWinningBid: result.isWinningBid,
+        serverTimestamp: Date.now(),
       });
 
       // ✅ NUEVA LÓGICA: Verificar extensión inmediata después de cada puja
       await this.checkAndExtendAuctionImmediately(createBidDto.auctionId);
-      
+
     } catch (error) {
       this.logger.error('Error procesando puja:', error);
-      client.emit('bidResponse', { 
-        event: 'bidError', 
-        data: error.message || 'Error al procesar la puja' 
+      client.emit('bidResponse', {
+        event: 'bidError',
+        data: error.message || 'Error al procesar la puja'
       });
     } finally {
       // Limpiar la puja pendiente
@@ -100,7 +259,7 @@ export class BidsGateway {
 
     // 3. Procesar la puja con bloqueo optimista
     const bid = await this.bidsService.createWithOptimisticLock(createBidDto);
-    
+
     // 4. Obtener últimas pujas
     const lastBids = await this.bidsService.findLastBids(
       createBidDto.auctionId,
@@ -127,7 +286,7 @@ export class BidsGateway {
   private async checkAndExtendAuctionImmediately(auctionId: string) {
     try {
       const auction = await this.bidsService.getAuction(auctionId);
-      
+
       if (!auction || auction.status !== 'ACTIVE') {
         return;
       }
@@ -139,9 +298,9 @@ export class BidsGateway {
       // Solo extender si quedan menos de 3 minutos
       if (timeRemaining <= 3 * 60 * 1000) {
         const newEndDate = new Date(Date.now() + 3 * 60 * 1000);
-        
+
         await this.bidsService.extendAuction(auctionId, newEndDate);
-        
+
         this.logger.log(`⏰✅ Subasta ${auctionId} extendida INMEDIATAMENTE por puja en últimos 3 minutos`);
         await this.notifyAuctionExtension(auctionId, newEndDate);
       }
@@ -153,7 +312,7 @@ export class BidsGateway {
   // ✅ MEJORADO: Notificar extensión con información completa
   async notifyAuctionExtension(auctionId: string, newEndDate: Date) {
     this.logger.log(`📢 Emitiendo auctionExtended para subasta ${auctionId}`);
-    
+
     // Emitir a TODOS los clientes, no solo a la sala
     this.server.emit('auctionExtended', {
       auctionId: auctionId,
@@ -161,6 +320,7 @@ export class BidsGateway {
       extendedBy: '3 minutos',
       reason: 'Puja realizada en los últimos 3 minutos de la subasta',
       timestamp: new Date().toISOString(),
+      serverTimestamp: Date.now(),
       // Información adicional para actualizar contadores
       timeRemaining: newEndDate.getTime() - Date.now(),
       formattedEndDate: newEndDate.toLocaleTimeString(),
@@ -173,6 +333,7 @@ export class BidsGateway {
       extendedBy: '3 minutos',
       reason: 'Puja realizada en los últimos 3 minutos de la subasta',
       timestamp: new Date().toISOString(),
+      serverTimestamp: Date.now(),
     });
   }
 
@@ -186,6 +347,7 @@ export class BidsGateway {
       closedAt: new Date().toISOString(),
       message: 'Subasta finalizada definitivamente',
       timestamp: new Date().toISOString(),
+      serverTimestamp: Date.now(),
       // Información para actualizar UI
       status: 'CLOSED',
       final: true,
@@ -197,6 +359,7 @@ export class BidsGateway {
       closedAt: new Date().toISOString(),
       message: 'Subasta finalizada definitivamente',
       timestamp: new Date().toISOString(),
+      serverTimestamp: Date.now(),
       status: 'CLOSED',
       final: true,
     });
@@ -206,6 +369,12 @@ export class BidsGateway {
   handleJoinAuctionRoom(client: Socket, auctionId: string) {
     client.join(`auction-${auctionId}`);
     this.logger.log(`👥 Client ${client.id} joined auction room: ${auctionId}`);
+
+    // Actualizar room en clientConnections
+    const clientData = this.clientConnections.get(client.id);
+    if (clientData) {
+      clientData.room = `auction-${auctionId}`;
+    }
     
     // Enviar información actualizada al unirse
     client.emit('joinedRoom', {
@@ -219,6 +388,13 @@ export class BidsGateway {
   handleLeaveAuctionRoom(client: Socket, auctionId: string) {
     client.leave(`auction-${auctionId}`);
     this.logger.log(`👋 Client ${client.id} left auction room: ${auctionId}`);
+    
+    // Actualizar room en clientConnections
+    const clientData = this.clientConnections.get(client.id);
+    if (clientData) {
+      clientData.room = '';
+    }
+    
     client.emit('leftRoom', `Left auction room: ${auctionId}`);
   }
 
@@ -233,10 +409,95 @@ export class BidsGateway {
           endDate: auction.endDate,
           timeRemaining: new Date(auction.endDate).getTime() - Date.now(),
           timestamp: new Date().toISOString(),
+          serverTimestamp: Date.now(),
         });
       }
     } catch (error) {
       this.logger.error('Error obteniendo tiempo de subasta:', error);
     }
+  }
+
+@SubscribeMessage('pong')
+handlePong(@ConnectedSocket() client: Socket, data: any) {
+  try {
+    // Debug detallado
+    console.log(`📡 Pong recibido de ${client.id}:`, {
+      dataType: typeof data,
+      dataValue: data,
+      isObject: typeof data === 'object',
+      hasTimestamp: data?.timestamp !== undefined,
+      timestamp: data?.timestamp
+    });
+    
+    // Si data es undefined o null, usar valores por defecto
+    if (!data) {
+      console.log(`⚠️ Pong sin datos explícitos de ${client.id}, usando valores por defecto`);
+      data = { timestamp: Date.now() };
+    }
+    
+    // Extraer timestamp de diferentes formas
+    let timestamp: number;
+    
+    if (typeof data === 'object' && data.timestamp !== undefined) {
+      timestamp = data.timestamp;
+    } else if (typeof data === 'number') {
+      timestamp = data;
+    } else {
+      timestamp = Date.now();
+    }
+    
+    const latency = Date.now() - timestamp;
+    
+    console.log(`✅ Pong procesado: ${client.id}, latencia: ${latency}ms`);
+    
+    // Actualizar conexión
+    const clientData = this.clientConnections.get(client.id);
+    if (clientData) {
+      clientData.lastPing = Date.now();
+      clientData.latency = latency;
+      
+      // Enviar advertencia si la latencia es alta
+      if (latency > 1000) {
+        client.emit('highLatencyWarning', {
+          latency: latency,
+          message: `Tu conexión es lenta (${latency}ms). Las pujas pueden tardar en procesarse.`
+        });
+      }
+    }
+    
+  } catch (error) {
+    console.error(`❌ Error en handlePong para ${client.id}:`, error);
+  }
+}
+
+  @SubscribeMessage('getConnectionQuality')
+  handleGetConnectionQuality(@ConnectedSocket() client: Socket) {
+    const clientData = this.clientConnections.get(client.id);
+
+    let quality = 'good';
+    if (clientData) {
+      if (clientData.latency > 1000) quality = 'poor';
+      else if (clientData.latency > 500) quality = 'fair';
+    }
+
+    client.emit('connectionQuality', {
+      quality,
+      latency: clientData?.latency || 0,
+      lastPing: clientData?.lastPing || 0
+    });
+  }
+
+  // Limpiar recursos al destruir el módulo
+  onModuleDestroy() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+    if (this.inactiveCheckInterval) {
+      clearInterval(this.inactiveCheckInterval);
+    }
+    this.clientConnections.clear();
+    this.pendingBids.clear();
+    this.bidBuffer.clear();
+    this.logger.log('🔄 BidsGateway resources cleaned up');
   }
 }

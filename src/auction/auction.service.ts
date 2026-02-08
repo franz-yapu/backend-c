@@ -369,4 +369,13 @@ async findLastClosedAuction() {
     status: auction.status,
   };
 }
+
+// Agregar al final de la clase AuctionsService
+async getServerTime() {
+  return {
+    serverTime: new Date().toISOString(),
+    timestamp: Date.now(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+  };
+}
 }

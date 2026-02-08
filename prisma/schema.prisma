@@ -87,7 +87,6 @@ model User {
   sellerAuctions     Auction[]     @relation("SellerAuctions")
   bids               Bid[]
   documents          Dms[]
-  soldTransactions   Transaction[] @relation("SellerTransactions")
   boughtTransactions Transaction[] @relation("BuyerTransactions")
   products           Product[]
 
@@ -237,7 +236,6 @@ model Transaction {
 
   auction Auction @relation(fields: [auctionId], references: [id])
   buyer   User    @relation("BuyerTransactions", fields: [buyerId], references: [id])
-  seller  User    @relation("SellerTransactions", fields: [sellerId], references: [id])
    coffeeLot CoffeeLot @relation(fields: [coffeeLotId], references: [id]) // 👈 Relación directa
 
   @@map("transactions")

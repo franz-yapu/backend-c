@@ -95,7 +95,7 @@ export class EmailService implements OnModuleInit {
 
       const mailOptions = {
         from: {
-          name: process.env.EMAIL_FROM_NAME || 'TECAB',
+          name: process.env.EMAIL_FROM_NAME || 'Zeta',
           address: process.env.GMAIL_USER,
         },
         to,
@@ -140,13 +140,13 @@ export class EmailService implements OnModuleInit {
       <body>
         <div class="container">
           <div class="header">
-            <h1>☕ TECAB</h1>
+            <h1> Cáritas</h1>
           </div>
           <div class="content">
-            <h2>¡Bienvenido, ${data.firstName,'',  data.lastName}!</h2>
-            <p>Gracias por registrarte en TECAB.</p>
+            <h2>¡Bienvenido, ${data.firstName} ${data.lastName}!</h2>
+            <p>Gracias por registrarte en Cáritas.</p>
             <p>Estamos emocionados de tenerte en nuestra comunidad cafetalera.</p>
-            <p>Saludos,<br>El equipo de TECAB</p>
+            <p>Saludos,<br>El equipo de Cáritas</p>
             token: ${token}
           </div>
         </div>
@@ -156,7 +156,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: `¡Bienvenido a TECAB, ${data.firstName,'',  data.lastName}!`,
+      subject: `¡Bienvenido a Cáritas, ${data.firstName,'',  data.lastName}!`,
       html,
     });
   }
@@ -187,7 +187,7 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: 'Restablece tu contraseña - TECAB',
+      subject: 'Restablece tu contraseña - Cáritas',
       html,
     });
   }
@@ -197,404 +197,401 @@ export class EmailService implements OnModuleInit {
 
 
 
-  async sendVerificationEmail(data: any, token: string): Promise<EmailResponse> {
-    const to = data.email;
-    const fullName = `${data.firstName} ${data.lastName}`.trim();
-    const loginUrl = `${process.env.ENV_FROM_ADDRESS }/login?token=${token}`;
-    
-    const html = `
-       <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          
-          body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            line-height: 1.6; 
-            color: #333333;
-            background-color: #f8f9fa;
-            padding: 20px;
-          }
-          
-          .container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            background: #ffffff;
-            
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-          }
-          
-          .header { 
-            background:#95c11f;
-            color: white; 
-            padding: 30px 20px;
-            text-align: center;
-          }
-          
-          .logo {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 10px;
-          }
-          
-          .content {
-            padding: 40px 30px;
-          }
-          
-          .welcome-title {
-            color: #000;
-            font-size: 24px;
-            margin-bottom: 20px;
-            font-weight: 600;
-          }
-          
-          .message {
-            margin-bottom: 25px;
-            font-size: 16px;
-            color: #555555;
-            line-height: 1.7;
-          }
-          
-          .cta-button {
-            display: inline-block;
-            background: #95c11f;
-            color: white;
-            padding: 14px 32px;
-            text-decoration: none;
-            
-            font-weight: 600;
-            font-size: 16px;
-            margin: 20px 0;
-            text-align: center;
-            transition: transform 0.2s, box-shadow 0.2s;
-          }
-          
-          .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(139, 69, 19, 0.3);
-          }
-          
-          .token-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #8B4513;
-            margin: 25px 0;
-            font-size: 14px;
-            color: #666;
-          }
-          
-          .footer {
-            text-align: center;
-            padding: 25px 20px;
-            background: #f8f9fa;
-            color: #666;
-            font-size: 14px;
-            border-top: 1px solid #e9ecef;
-          }
-          
-          .security-note {
-            font-size: 12px;
-            color: #888;
-            margin-top: 15px;
-            font-style: italic;
-          }
-          
-          .highlight {
-            color: #95c11f;
-            font-weight: 600;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <div class="logo">TECAB Bolivia</div>
-            <p>Donde cada taza cuenta una historia</p>
-          </div>
-          
-          <div class="content">
-            <h1 class="welcome-title">¡Bienvenido a Tecab, ${fullName}!</h1>
-            
-            <div class="message">
-              <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <span class="highlight">Tecab</span>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
-            </div>
-            
-            <div class="message">
-              <p>Para completar su registro y comenzar a explorar nuestro mundo de sabores, por favor haga clic en el siguiente botón:</p>
-            </div>
-            
-            <div style="text-align: center;">
-              <a href="${loginUrl}" class="cta-button">
-                Confirmar Mi Registro
-              </a>
-            </div>
-            
-            <div class="token-info">
-              <p><strong>Nota importante:</strong> Este enlace es personal e intransferible. Si no solicitó este registro, por favor ignore este mensaje.</p>
-            </div>
-            
-           
-            
-            <div class="message">
-              <p>Estamos aquí para ayudarle en cualquier momento. ¡No dude en contactarnos!</p>
-            </div>
-            
-            <div style="margin-top: 30px;">
-              <p>Atentamente,</p>
-              <p style="font-weight: 600; color: #95c11f;">El equipo de Tecab</p>
-            </div>
-          </div>
-          
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} TECAB. Todos los derechos reservados.</p>
-            <p>Este es un mensaje automático, por favor no responda a este correo.</p>
-            <div class="security-note">
-              Por su seguridad, este enlace expirará en 24 horas.
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    return this.sendEmail({
-      to,
-      subject: `¡Bienvenido a TECAB, ${fullName}! Complete su registro`,
-      html,
-    });
-  }
-
-  async sendAuctionWinNotification(
-  buyerEmail: string, 
-  buyerName: string, 
-  coffeeLot: any, 
-  winningBid: any, 
-  auction: any
-): Promise<EmailResponse> {
-  const to = buyerEmail;
-  const subject = `¡Felicidades! Has ganado la subasta - ${coffeeLot.name}`;
+async sendVerificationEmail(data: any, token: string): Promise<EmailResponse> {
+  const to = data.email;
+  const fullName = `${data.firstName} ${data.lastName}`.trim();
+  const loginUrl = `${process.env.ENV_FROM_ADDRESS}/login?token=${token}`;
   
   const html = `
-     <!DOCTYPE html>
+    <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Verifica tu cuenta - Cáritas</title>
       <style>
-        * {
+        /* ESTILOS BÁSICOS COMPATIBLES */
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333333;
           margin: 0;
           padding: 0;
-          box-sizing: border-box;
+          background-color: #f5f5f5;
         }
         
-        body { 
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-          line-height: 1.6; 
-          color: #333333;
-          background-color: #f8f9fa;
-          padding: 20px;
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: #ffffff;
         }
         
-        .container { 
-          max-width: 650px; 
-          margin: 0 auto; 
-          background: #ffffff;
-          border-radius: 1px;
-          overflow: hidden;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        .header { 
-          background: #95c11f;
-          color: white; 
-          padding: 30px 20px;
+        .header {
+          background-color: #9e2a2a;
+          color: white;
+          padding: 25px 20px;
           text-align: center;
         }
         
-        .logo {
-          font-size: 28px;
-          font-weight: bold;
-          margin-bottom: 10px;
-        }
-        
         .content {
-          padding: 40px 30px;
+          padding: 30px;
         }
         
-        .congrats-title {
-          color: #000;
-          font-size: 26px;
+        .title {
+          color: #000000;
+          font-size: 24px;
           margin-bottom: 20px;
-          font-weight: 600;
           text-align: center;
         }
         
         .message {
-          margin-bottom: 25px;
+          margin-bottom: 20px;
           font-size: 16px;
           color: #555555;
-          line-height: 1.7;
         }
         
-        .lot-details {
-          background: #f8f9fa;
-          padding: 25px;
-          border-radius: 8px;
-          border-left: 4px solid #95c11f;
-          margin: 25px 0;
-        }
-        
-        .detail-row {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 12px;
-          padding-bottom: 12px;
-          border-bottom: 1px solid #e9ecef;
-        }
-        
-        .detail-label {
-          font-weight: 600;
-          color: #95c11f;
-        }
-        
-        .detail-value {
-          font-weight: 500;
-          color: #333;
-        }
-        
-        .winning-bid {
-          background:#95c11f;
+        .button {
+          display: block;
+          width: 200px;
+          margin: 30px auto;
+          padding: 12px 20px;
+          background-color: #9e2a2a;
           color: white;
-          padding: 20px;
+          text-decoration: none;
           text-align: center;
-          margin: 25px 0;
-        }
-        
-        .bid-amount {
-          font-size: 32px;
+          border-radius: 4px;
           font-weight: bold;
-          margin: 10px 0;
+          font-size: 16px;
         }
         
-        .bid-details {
-          display: flex;
-          justify-content: space-around;
-          margin-top: 20px;
-          flex-wrap: wrap;
-        }
-        
-        .bid-item {
-          margin: 10px;
-          padding: 15px;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 8px;
-          min-width: 150px;
-        }
-        
-        .bid-label {
-          font-size: 14px;
-          opacity: 0.9;
-          margin-bottom: 5px;
-        }
-        
-        .bid-value {
-          font-size: 18px;
-          font-weight: bold;
-        }
-        
-        .next-steps {
-          background: #E3F2FD;
+        .info-box {
+          background-color: #f8f9fa;
           padding: 20px;
-          border-radius: 8px;
-          border-left: 4px solid #2196F3;
           margin: 25px 0;
-        }
-        
-        .steps-list {
-          list-style: none;
-          padding: 0;
-        }
-        
-        .steps-list li {
-          margin-bottom: 15px;
-          padding-left: 25px;
-          position: relative;
-        }
-        
-        .steps-list li:before {
-          content: "✓";
-          position: absolute;
-          left: 0;
-          color: #2196F3;
-          font-weight: bold;
+          border-left: 4px solid #9e2a2a;
+          border-radius: 4px;
         }
         
         .footer {
           text-align: center;
-          padding: 25px 20px;
-          background: #f8f9fa;
-          color: #666;
+          padding: 20px;
+          background-color: #f5f5f5;
+          color: #666666;
           font-size: 14px;
-          border-top: 1px solid #e9ecef;
+          border-top: 1px solid #e0e0e0;
         }
         
-        .contact-info {
-          background: #FFF3E0;
-          padding: 15px;
-          border-radius: 6px;
-          margin: 20px 0;
-          text-align: center;
+        .detail-row {
+          margin-bottom: 10px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid #eeeeee;
         }
         
-        .highlight {
-          color: #95c11f;
-          font-weight: 600;
+        .detail-label {
+          font-weight: bold;
+          color: #666666;
+          display: inline-block;
+          width: 120px;
         }
         
-        @media (max-width: 600px) {
+        .detail-value {
+          color: #333333;
+        }
+        
+        /* RESPONSIVE */
+        @media only screen and (max-width: 600px) {
+          .container {
+            width: 100%;
+          }
+          
           .content {
             padding: 20px 15px;
           }
           
-          .detail-row {
-            flex-direction: column;
+          .button {
+            width: 90%;
           }
           
-          .congrats-title {
-            font-size: 22px;
-          }
-          
-          .bid-details {
-            flex-direction: column;
+          .detail-label {
+            display: block;
+            width: 100%;
+            margin-bottom: 5px;
           }
         }
       </style>
     </head>
     <body>
       <div class="container">
+        <!-- Header -->
         <div class="header">
-          <div class="logo">TECAB Bolivia</div>
-          <p>Subastas de Café de Especialidad</p>
+          <h1 style="margin: 0; font-size: 24px;">Cáritas Bolivia</h1>
+          <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Donde cada taza cuenta una historia</p>
         </div>
         
+        <!-- Content -->
         <div class="content">
-          <h1 class="congrats-title">¡Felicitaciones, ${buyerName}!</h1>
+          <h2 class="title">¡Bienvenido a Cáritas, ${fullName}!</h2>
+          
+          <div class="message">
+            <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <strong style="color: #9e2a2a;">Cáritas</strong>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
+          </div>
+          
+          <div class="message">
+            <p>Para completar su registro y comenzar a explorar nuestro mundo de sabores, por favor haga clic en el siguiente botón:</p>
+          </div>
+          
+          <a href="${loginUrl}" class="button" style="color: white; text-decoration: none;">
+            Confirmar Mi Registro
+          </a>
+          
+          <div class="info-box">
+            <p style="margin: 0; font-size: 14px;"><strong>Nota importante:</strong> Este enlace es personal e intransferible. Si no solicitó este registro, por favor ignore este mensaje.</p>
+          </div>
+          
+          <!-- Detalles del registro -->
+          <div style="margin: 25px 0; padding: 15px; background-color: #f9f9f9; border-radius: 4px;">
+            <h3 style="color: #9e2a2a; margin-top: 0; margin-bottom: 15px; font-size: 18px;">📋 Detalles de su registro</h3>
+            
+            <div class="detail-row">
+              <span class="detail-label">Nombre completo:</span>
+              <span class="detail-value">${fullName}</span>
+            </div>
+            
+            <div class="detail-row">
+              <span class="detail-label">Correo electrónico:</span>
+              <span class="detail-value">${data.email}</span>
+            </div>
+            
+            <div class="detail-row" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0;">
+              <span class="detail-label">Fecha de registro:</span>
+              <span class="detail-value">${new Date().toLocaleDateString('es-ES', { 
+                day: '2-digit', 
+                month: 'long', 
+                year: 'numeric' 
+              })}</span>
+            </div>
+          </div>
+          
+          <div class="message">
+            <p>Estamos aquí para ayudarle en cualquier momento. ¡No dude en contactarnos!</p>
+          </div>
+          
+          <div style="margin-top: 30px; text-align: center;">
+            <p style="margin: 0 0 5px 0;">Atentamente,</p>
+            <p style="margin: 0; font-weight: bold; color: #9e2a2a;">El equipo de Cáritas</p>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+          <p>&copy; ${new Date().getFullYear()} Cáritas Bolivia. Todos los derechos reservados.</p>
+          <p>Este es un mensaje automático, por favor no responda a este correo.</p>
+          <div style="margin-top: 10px; font-size: 12px; color: #888888;">
+            Por su seguridad, este enlace expirará en 24 horas.
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return this.sendEmail({
+    to,
+    subject: `¡Bienvenido a Cáritas, ${fullName}! Complete su registro`,
+    html,
+  });
+}
+
+async sendAuctionWinNotification(
+  buyerEmail: string, 
+  buyerName: string, 
+  coffeeLot: any, 
+  winningBid: any, 
+  auction: any,
+  sellerName?: string 
+): Promise<EmailResponse> {
+  const to = buyerEmail;
+  const subject = `¡Felicidades! Has ganado la subasta - ${coffeeLot.name}`;
+  
+  // Calcular valores
+  const totalValue = winningBid.amount * (coffeeLot.quantityLbs || coffeeLot.quantity || 0);
+  const seller = sellerName || coffeeLot.seller || 'Productor';
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>¡Has ganado la subasta!</title>
+      <style>
+        /* ESTILOS BÁSICOS Y COMPATIBLES */
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333333;
+          margin: 0;
+          padding: 0;
+          background-color: #f5f5f5;
+        }
+        
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: #ffffff;
+        }
+        
+        .header {
+          background-color: #9e2a2a;
+          color: white;
+          padding: 30px 20px;
+          text-align: center;
+        }
+        
+        .content {
+          padding: 30px;
+        }
+        
+        .title {
+          color: #000000;
+          font-size: 24px;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+        
+        .message {
+          margin-bottom: 20px;
+          font-size: 16px;
+          color: #555555;
+        }
+        
+        .section {
+          margin: 25px 0;
+          padding: 20px;
+          border: 1px solid #e0e0e0;
+          border-radius: 5px;
+          background-color: #f9f9f9;
+        }
+        
+        .section-title {
+          color: #9e2a2a;
+          font-size: 18px;
+          margin-bottom: 15px;
+          border-bottom: 2px solid #9e2a2a;
+          padding-bottom: 5px;
+        }
+        
+        .detail-row {
+          display: table;
+          width: 100%;
+          margin-bottom: 10px;
+        }
+        
+        .detail-label {
+          display: table-cell;
+          width: 40%;
+          font-weight: bold;
+          color: #666666;
+          padding: 5px 0;
+        }
+        
+        .detail-value {
+          display: table-cell;
+          width: 60%;
+          padding: 5px 0;
+        }
+        
+        .highlight {
+          background-color: #9e2a2a;
+          color: white;
+          padding: 15px;
+          text-align: center;
+          margin: 20px 0;
+          border-radius: 5px;
+        }
+        
+        .amount {
+          font-size: 28px;
+          font-weight: bold;
+          margin: 10px 0;
+        }
+        
+        .footer {
+          text-align: center;
+          padding: 20px;
+          background-color: #f5f5f5;
+          color: #666666;
+          font-size: 14px;
+          border-top: 1px solid #e0e0e0;
+        }
+        
+        .contact {
+          background-color: #fff3e0;
+          padding: 15px;
+          margin: 20px 0;
+          border-radius: 5px;
+          text-align: center;
+        }
+        
+        /* ESTILOS PARA TABLAS (más compatibles) */
+        .table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 15px 0;
+        }
+        
+        .table th {
+          background-color: #f2f2f2;
+          padding: 10px;
+          text-align: left;
+          border: 1px solid #ddd;
+        }
+        
+        .table td {
+          padding: 10px;
+          border: 1px solid #ddd;
+        }
+        
+        /* RESPONSIVE */
+        @media only screen and (max-width: 600px) {
+          .container {
+            width: 100%;
+          }
+          
+          .content {
+            padding: 15px;
+          }
+          
+          .detail-row {
+            display: block;
+          }
+          
+          .detail-label, .detail-value {
+            display: block;
+            width: 100%;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <!-- Header -->
+        <div class="header">
+          <h1 style="margin: 0; font-size: 28px;">Cáritas Bolivia</h1>
+          <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Subastas de Café de Especialidad</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+          <h2 class="title">¡Felicitaciones, ${buyerName}!</h2>
           
           <div class="message">
             <p>Nos complace informarte que <strong>has ganado la subasta</strong> del lote de café especial. Tu oferta fue la más competitiva y ahora este excepcional café es tuyo.</p>
           </div>
           
-          <div class="lot-details">
-            <h3 style=" margin-bottom: 20px;"> Detalles del Lote Adquirido</h3>
+          <!-- Detalles del lote -->
+          <div class="section">
+            <h3 class="section-title">📋 Detalles del Lote Adquirido</h3>
             
             <div class="detail-row">
               <span class="detail-label">Lote de Café:</span>
@@ -603,17 +600,12 @@ export class EmailService implements OnModuleInit {
             
             <div class="detail-row">
               <span class="detail-label">Productor:</span>
-              <span class="detail-value">${coffeeLot.seller || 'No especificado'}</span>
+              <span class="detail-value">${seller}</span>
             </div>
             
             <div class="detail-row">
               <span class="detail-label">Variedad:</span>
               <span class="detail-value">${coffeeLot.variety || 'No especificado'}</span>
-            </div>
-            
-            <div class="detail-row">
-              <span class="detail-label">Proceso:</span>
-              <span class="detail-value">${coffeeLot.process || 'No especificado'}</span>
             </div>
             
             <div class="detail-row">
@@ -623,71 +615,74 @@ export class EmailService implements OnModuleInit {
             
             <div class="detail-row">
               <span class="detail-label">Cantidad:</span>
-              <span class="detail-value">${coffeeLot.quantityLbs ? coffeeLot.quantityLbs + ' lbs' : coffeeLot.quantity + ' kg'}</span>
+              <span class="detail-value">${coffeeLot.quantityLbs ? coffeeLot.quantityLbs + ' lbs' : (coffeeLot.quantity || '0') + ' kg'}</span>
             </div>
             
             <div class="detail-row">
               <span class="detail-label">Origen:</span>
               <span class="detail-value">${coffeeLot.region || ''} ${coffeeLot.country ? ', ' + coffeeLot.country : ''}</span>
             </div>
-            
-            <div class="detail-row">
-              <span class="detail-label">Altitud:</span>
-              <span class="detail-value">${coffeeLot.altitude ? coffeeLot.altitude + ' m.s.n.m' : 'No especificado'}</span>
-            </div>
           </div>
           
-          <div class="winning-bid">
-            <h3 style="margin-bottom: 15px;"> Oferta Ganadora</h3>
+          <!-- Oferta ganadora -->
+          <div class="highlight">
+            <h3 style="margin: 0 0 15px 0; color: white;">🏆 Oferta Ganadora</h3>
             
-            <div class="bid-details">
-              <div class="bid-item">
-                <div class="bid-label">Precio por libra</div>
-                <div class="bid-value">$${winningBid.amount.toFixed(2)}</div>
-              </div>
-              
-              <div class="bid-item">
-                <div class="bid-label">Cantidad total</div>
-                <div class="bid-value">${coffeeLot.quantityLbs} lbs</div>
-              </div>
-              
-              <div class="bid-item">
-                <div class="bid-label">Valor total</div>
-                <div class="bid-amount">$${(winningBid.amount * coffeeLot.quantityLbs).toFixed(2)}</div>
-              </div>
-            </div>
+            <table class="table" style="background-color: rgba(255,255,255,0.1);">
+              <tr>
+                <th style="color: white; border-color: rgba(255,255,255,0.3);">Concepto</th>
+                <th style="color: white; border-color: rgba(255,255,255,0.3);">Valor</th>
+              </tr>
+              <tr>
+                <td style="color: white; border-color: rgba(255,255,255,0.3);">Precio por libra</td>
+                <td style="color: white; border-color: rgba(255,255,255,0.3);">$${winningBid.amount.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style="color: white; border-color: rgba(255,255,255,0.3);">Cantidad total</td>
+                <td style="color: white; border-color: rgba(255,255,255,0.3);">${coffeeLot.quantityLbs || coffeeLot.quantity || 0} ${coffeeLot.quantityLbs ? 'lbs' : 'kg'}</td>
+              </tr>
+              <tr>
+                <td style="color: white; border-color: rgba(255,255,255,0.3); font-weight: bold;">VALOR TOTAL</td>
+                <td style="color: white; border-color: rgba(255,255,255,0.3); font-weight: bold; font-size: 18px;">$${totalValue.toFixed(2)}</td>
+              </tr>
+            </table>
             
-            <p style="margin-top: 15px;">Subasta: <strong>${auction.title}</strong></p>
-          </div>
-          
-          <div class="next-steps">
-            <h3 style="color: #2196F3; margin-bottom: 15px;"> Próximos Pasos</h3>
-            <ul class="steps-list">
-              <li><strong>Procesamiento del Pago:</strong> Nuestro equipo se contactará contigo en las próximas 24 horas para coordinar el pago.</li>
-              <li><strong>Documentación:</strong> Recibirás la documentación completa del lote y certificaciones de calidad.</li>
-              <li><strong>Logística:</strong> Coordinaremos la logística de envío según tu ubicación y preferencias.</li>
-              <li><strong>Seguimiento:</strong> Obtendrás un número de seguimiento una vez despachado el lote.</li>
-            </ul>
-          </div>
-          
-          <div class="contact-info">
-            <p><strong>¿Tienes preguntas?</strong></p>
-            <p>Nuestro equipo de atención al cliente está disponible para ayudarte con cualquier consulta sobre tu compra.</p>
-            <p style="margin-top: 10px;">
-              <strong>Email:</strong> contact@hirrobrothers.com | 
-              <strong>Teléfono:</strong> +591 68086298
+            <p style="margin: 15px 0 0 0; color: white; opacity: 0.9;">
+              Subasta: <strong>${auction.title}</strong>
             </p>
           </div>
           
-          <div class="message">
-            <p>Gracias por confiar en <span class="highlight">TECAB</span> para adquirir cafés de especialidad de la más alta calidad.</p>
+          <!-- Próximos pasos -->
+          <div class="section">
+            <h3 class="section-title">📝 Próximos Pasos</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 10px;"><strong>Procesamiento del Pago:</strong> Nuestro equipo se contactará contigo en las próximas 24 horas.</li>
+              <li style="margin-bottom: 10px;"><strong>Documentación:</strong> Recibirás la documentación completa del lote.</li>
+              <li style="margin-bottom: 10px;"><strong>Logística:</strong> Coordinaremos el envío según tu ubicación.</li>
+              <li><strong>Seguimiento:</strong> Obtendrás un número de seguimiento una vez despachado.</li>
+            </ul>
+          </div>
+          
+          <!-- Contacto -->
+          <div class="contact">
+            <p style="margin: 0 0 10px 0;"><strong>¿Tienes preguntas?</strong></p>
+            <p style="margin: 0 0 10px 0;">Nuestro equipo está disponible para ayudarte:</p>
+            <p style="margin: 0;">
+              <strong>Email:</strong> franzyapu20@gmail.com<br>
+              <strong>Teléfono:</strong> +591 61139545
+            </p>
+          </div>
+          
+          <div class="message" style="text-align: center;">
+            <p>Gracias por confiar en <strong style="color: #9e2a2a;">Cáritas</strong> para adquirir cafés de especialidad.</p>
           </div>
         </div>
         
+        <!-- Footer -->
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} TECAB. Todos los derechos reservados.</p>
+          <p>&copy; ${new Date().getFullYear()} Cáritas Bolivia. Todos los derechos reservados.</p>
           <p>Este es un mensaje automático, por favor no responda a este correo.</p>
-          <p style="margin-top: 10px; font-size: 12px; color: #888;">
+          <p style="margin-top: 10px; font-size: 12px; color: #888888;">
             Calidad • Transparencia • Tradición
           </p>
         </div>

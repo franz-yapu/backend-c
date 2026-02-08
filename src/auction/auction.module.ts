@@ -8,6 +8,7 @@ import { BidModule } from 'src/bid/bid.module';
 import { AuctionClosureService } from './auction-closure.service';
 import { EmailService } from 'src/email/email.service';
 import { AuctionTimerService } from './auction-timer.service';
+import { TimeController } from 'src/common/time.controller';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { AuctionTimerService } from './auction-timer.service';
     UsersModule,
     forwardRef(() => BidModule)
   ],
-  controllers: [AuctionsController],
+  controllers: [AuctionsController,TimeController],
   providers: [
     AuctionsService,
     AuctionClosureService,
