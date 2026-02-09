@@ -250,20 +250,6 @@ async sendVerificationEmail(data: any, token: string): Promise<EmailResponse> {
           color: #555555;
         }
         
-        .button {
-          display: block;
-          width: 200px;
-          margin: 30px auto;
-          padding: 12px 20px;
-          background-color: #9e2a2a;
-          color: white;
-          text-decoration: none;
-          text-align: center;
-          border-radius: 4px;
-          font-weight: bold;
-          font-size: 16px;
-        }
-        
         .info-box {
           background-color: #f8f9fa;
           padding: 20px;
@@ -308,10 +294,6 @@ async sendVerificationEmail(data: any, token: string): Promise<EmailResponse> {
             padding: 20px 15px;
           }
           
-          .button {
-            width: 90%;
-          }
-          
           .detail-label {
             display: block;
             width: 100%;
@@ -340,10 +322,29 @@ async sendVerificationEmail(data: any, token: string): Promise<EmailResponse> {
             <p>Para completar su registro y comenzar a explorar nuestro mundo de sabores, por favor haga clic en el siguiente botón:</p>
           </div>
           
-          <a href="${loginUrl}" class="button" style="color: white; text-decoration: none;">
-            Confirmar Mi Registro
-          </a>
-          
+          <!-- BOTÓN CON ESTILOS EN LÍNEA COMPLETOS -->
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${loginUrl}" 
+               style="display: inline-block; 
+                      width: 200px; 
+                      margin: 0 auto; 
+                      padding: 14px 24px; 
+                      background-color: #9e2a2a; 
+                      color: white; 
+                      text-decoration: none; 
+                      text-align: center; 
+                      border-radius: 4px; 
+                      font-weight: bold; 
+                      font-size: 16px;
+                      border: none;
+                      cursor: pointer;">
+              Confirmar Mi Registro
+            </a>
+          </div>
+          <div style="margin: 15px 0; padding: 15px; background-color: #f0f0f0; border-radius: 4px; font-size: 14px;">
+  <p style="margin: 0 0 5px 0; font-weight: bold;">Si el botón no funciona, copie y pegue este enlace en su navegador:</p>
+  <p style="margin: 0; word-break: break-all; color: #9e2a2a;">${loginUrl}</p>
+</div>
           <div class="info-box">
             <p style="margin: 0; font-size: 14px;"><strong>Nota importante:</strong> Este enlace es personal e intransferible. Si no solicitó este registro, por favor ignore este mensaje.</p>
           </div>
