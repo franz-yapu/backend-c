@@ -82,8 +82,8 @@ export class AuctionTimerService implements OnModuleDestroy {
 
 
 
-        // Solo procesar cuando el tiempo se acaba (1 segundo de margen)
-        if (timeRemaining <= 1000 && timeRemaining > 0) {
+        // Solo procesar cuando el tiempo se acaba o ya expiró
+        if (timeRemaining <= 0) {
           this.logger.log(`⏰ Subasta ${auctionId} terminando - procesando...`);
           await this.processAuctionCompletion(auctionId);
           this.activeAuctions.delete(auctionId);

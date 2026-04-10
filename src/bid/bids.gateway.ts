@@ -51,7 +51,6 @@ export class BidsGateway implements OnGatewayConnection, OnGatewayDisconnect {
           timestamp: Date.now(),
           serverTime: new Date().toISOString()
         });
-         this.logger.log('📡 Ping enviado a todos los clientes');
       }
     }, 30000);
   }
@@ -211,6 +210,9 @@ private checkInactiveConnections() {
 
       const result = await bidPromise;
 
+      // ✅ OBTENER DATOS ACTUALIZADOS (incluyendo el nuevo endDate si fue extendido)
+      const updatedAuction = await this.bidsService.getAuction(createBidDto.auctionId);
+
       // Notificar a todos en la sala sobre la nueva puja
       this.server.to(`auction-${createBidDto.auctionId}`).emit('newBid', {
         ...result.bid,
@@ -218,6 +220,9 @@ private checkInactiveConnections() {
         isWinningBid: result.isWinningBid,
         currentPrice: result.currentPrice,
         serverTimestamp: Date.now(),
+        // Piggyback de datos de subasta para sincronización redundante
+        auctionEndDate: updatedAuction?.endDate,
+        auctionStatus: updatedAuction?.status
       });
 
       // Emitir al cliente que hizo la puja
@@ -228,6 +233,9 @@ private checkInactiveConnections() {
         currentPrice: result.currentPrice,
         isWinningBid: result.isWinningBid,
         serverTimestamp: Date.now(),
+        // Piggyback de datos de subasta
+        auctionEndDate: updatedAuction?.endDate,
+        auctionStatus: updatedAuction?.status
       });
 
       // ✅ NUEVA LÓGICA: Verificar extensión inmediata después de cada puja
@@ -420,24 +428,11 @@ private checkInactiveConnections() {
 @SubscribeMessage('pong')
 handlePong(@ConnectedSocket() client: Socket, data: any) {
   try {
-    // Debug detallado
-    console.log(`📡 Pong recibido de ${client.id}:`, {
-      dataType: typeof data,
-      dataValue: data,
-      isObject: typeof data === 'object',
-      hasTimestamp: data?.timestamp !== undefined,
-      timestamp: data?.timestamp
-    });
-    
-    // Si data es undefined o null, usar valores por defecto
     if (!data) {
-      console.log(`⚠️ Pong sin datos explícitos de ${client.id}, usando valores por defecto`);
       data = { timestamp: Date.now() };
     }
     
-    // Extraer timestamp de diferentes formas
     let timestamp: number;
-    
     if (typeof data === 'object' && data.timestamp !== undefined) {
       timestamp = data.timestamp;
     } else if (typeof data === 'number') {
@@ -448,15 +443,11 @@ handlePong(@ConnectedSocket() client: Socket, data: any) {
     
     const latency = Date.now() - timestamp;
     
-    console.log(`✅ Pong procesado: ${client.id}, latencia: ${latency}ms`);
-    
-    // Actualizar conexión
     const clientData = this.clientConnections.get(client.id);
     if (clientData) {
       clientData.lastPing = Date.now();
       clientData.latency = latency;
       
-      // Enviar advertencia si la latencia es alta
       if (latency > 1000) {
         client.emit('highLatencyWarning', {
           latency: latency,
@@ -466,7 +457,7 @@ handlePong(@ConnectedSocket() client: Socket, data: any) {
     }
     
   } catch (error) {
-    console.error(`❌ Error en handlePong para ${client.id}:`, error);
+    this.logger.error(`Error en handlePong para ${client.id}:`, error);
   }
 }
 

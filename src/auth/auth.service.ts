@@ -85,8 +85,7 @@ export class AuthService {
     // Crear usuario y enviar correos
     try {
       const user = await this.usersService.createUser(createUserDto);
-      const token = this.jwtService.sign({ email: user.email }, { expiresIn: '744h' });
-      console.log('Generated token for email confirmation:', token);
+      const token = this.jwtService.sign({ email: user.email }, { expiresIn: '48h' });
 
       await this.emailService.sendVerificationEmail(user, token);
 

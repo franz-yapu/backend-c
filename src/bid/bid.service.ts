@@ -290,14 +290,43 @@ export class BidsService {
   async createWithOptimisticLock(createBidDto: CreateBidDto): Promise<any> {
     const TRANSACTION_TIMEOUT = 15000;
     return this.prisma.$transaction(async (tx) => { 
+      // 0. Validar que la subasta siga activa y no haya pasado su fecha de fin
+      const auction = await tx.auction.findUnique({
+        where: { id: createBidDto.auctionId },
+        select: { status: true, endDate: true }
+      });
+      if (!auction || auction.status !== 'ACTIVE') {
+        throw new Error('La subasta no está activa');
+      }
+      if (new Date() > new Date(auction.endDate)) {
+        throw new Error('El tiempo de la subasta ha finalizado');
+      }
+
       // 1. Verificar precio actual dentro de la transacción
-      const currentPrice = await this.getCurrentPrice(
-        createBidDto.auctionId,
-        createBidDto.coffeeLotId
-      );
+      const currentPrice = await tx.bid.findFirst({
+        where: {
+          auctionId: createBidDto.auctionId,
+          coffeeLotId: createBidDto.coffeeLotId,
+        },
+        orderBy: { amount: 'desc' },
+        select: { amount: true },
+      }).then(res => res?.amount || 0);
+
+      if (currentPrice === 0) {
+        const auctionDetail = await tx.auctionCoffeeLot.findFirst({
+          where: {
+            auctionId: createBidDto.auctionId,
+            coffeeLotId: createBidDto.coffeeLotId,
+          },
+          select: { startingPrice: true },
+        });
+        if (auctionDetail?.startingPrice && createBidDto.amount < auctionDetail.startingPrice) {
+          throw new Error(`El monto inicial debe ser al menos de $${auctionDetail.startingPrice}`);
+        }
+      }
 
       // 2. Validar que el monto sea mayor
-      if (createBidDto.amount <= currentPrice) {
+      if (currentPrice > 0 && createBidDto.amount <= currentPrice) {
         throw new Error(`El monto debe ser mayor al precio actual ($${currentPrice})`);
       }
 

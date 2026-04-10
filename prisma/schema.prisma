@@ -287,7 +287,7 @@ model Category {
 
   products Product[]
 
-  @@map("category")
+  @@map("categoria")
 }
 
 model Marca {
@@ -300,4 +300,45 @@ model Marca {
   products Product[]
 
   @@map("marca")
+}
+
+// ==========================================
+// BRANDING MODULE (PRD Section 5.11 / 7.1.1)
+// ==========================================
+
+model Branding {
+  id             String   @id @default(uuid())
+  primaryColor   String   @default("#CA3636") @map("primary_color")
+  secondaryColor String   @default("#FF9A24") @map("secondary_color")
+  successColor   String   @default("#10B981") @map("success_color")
+  warningColor   String   @default("#F59E0B") @map("warning_color")
+  dangerColor    String   @default("#EF4444") @map("danger_color")
+  infoColor      String   @default("#3B82F6") @map("info_color")
+  surfaceColor   String   @default("#FFFFFF") @map("surface_color")
+  textColor      String   @default("#1F2937") @map("text_color")
+  logoUrl        String?  @map("logo_url")
+  faviconUrl     String?  @map("favicon_url")
+  emailLogoUrl   String?  @map("email_logo_url")
+  themeMode      String   @default("light") @map("theme_mode")
+  fontFamily     String?  @map("font_family")
+  borderRadius   String?  @default("4px") @map("border_radius")
+  isActive       Boolean  @default(false) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  history BrandHistory[]
+
+  @@map("branding")
+}
+
+model BrandHistory {
+  id         String   @id @default(uuid())
+  brandingId String   @map("branding_id")
+  changedBy  String   @map("changed_by")
+  changes    Json
+  changedAt  DateTime @default(now()) @map("changed_at")
+
+  branding Branding @relation(fields: [brandingId], references: [id], onDelete: Cascade)
+
+  @@map("brand_history")
 }

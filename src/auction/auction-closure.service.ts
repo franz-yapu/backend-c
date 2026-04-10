@@ -9,7 +9,7 @@ import { BidsGateway } from 'src/bid/bids.gateway';
 export class AuctionClosureService {
   private readonly logger = new Logger(AuctionClosureService.name);
   private readonly EXTENSION_MINUTES = 3;
-  private readonly LAST_MINUTES_THRESHOLD = 5;
+  private readonly LAST_MINUTES_THRESHOLD = 3;
 
   constructor(
     private prisma: PrismaService,
@@ -116,7 +116,22 @@ export class AuctionClosureService {
   // 1. Ejecutar la transacción de base de datos SIN enviar correos
   try {
     const result = await this.prisma.$transaction(async (tx) => {
-      // Obtener subasta con detalles
+      // 1. Candado Optimista: Intentamos cambiar el estado de ACTIVE a CLOSED
+      // Si otra instancia o proceso ya lo hizo en este milisegundo, count será 0.
+      const lockResult = await tx.auction.updateMany({
+        where: { id: auctionId, status: 'ACTIVE' },
+        data: {
+          status: 'CLOSED',
+          isActive: false,
+        },
+      });
+
+      if (lockResult.count === 0) {
+        this.logger.warn(`⚠️ Subasta ${auctionId} ya está en procesamiento o cerrada por otra instancia.`);
+        return { auction: null, transactions: [] };
+      }
+
+      // 2. Ahora que somos dueños exclusivos de esta subasta, obtenemos los detalles
       auction = await tx.auction.findUnique({
         where: { id: auctionId },
         include: {
@@ -128,7 +143,7 @@ export class AuctionClosureService {
         },
       });
 
-      if (!auction || auction.status !== 'ACTIVE') {
+      if (!auction) {
         return { auction: null, transactions: [] };
       }
 
@@ -142,16 +157,7 @@ export class AuctionClosureService {
         }
       }
 
-      // Actualizar estado de la subasta
-      await tx.auction.update({
-        where: { id: auctionId },
-        data: {
-          status: 'CLOSED',
-          isActive: false,
-        },
-      });
-
-      this.logger.log(`🎉 Subasta "${auction.title}" cerrada exitosamente en base de datos`);
+      this.logger.log(`🎉 Subasta "${auction.title}" adjudicada y cerrada exitosamente en base de datos`);
 
       return { auction, transactions };
     }, {

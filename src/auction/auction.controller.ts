@@ -5,8 +5,7 @@ import {
   Body, 
   Param, 
   Put, 
-  Delete, 
-  ParseUUIDPipe,
+  Delete,
   Query 
 } from '@nestjs/common';
 
@@ -30,18 +29,9 @@ export class AuctionsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new auction' })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Auction created successfully' 
-  })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Bad request' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Coffee lot or seller not found' 
-  })
+  @ApiResponse({ status: 201, description: 'Auction created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 404, description: 'Coffee lot or seller not found' })
   @ApiBody({ type: CreateAuctionDto })
   create(@Body() createAuctionDto: CreateAuctionDto) {
     return this.auctionsService.create(createAuctionDto);
@@ -49,10 +39,7 @@ export class AuctionsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all auctions' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'List of all auctions' 
-  })
+  @ApiResponse({ status: 200, description: 'List of all auctions' })
   @ApiQuery({
     name: 'status',
     required: false,
@@ -60,67 +47,45 @@ export class AuctionsController {
     description: 'Filter auctions by status'
   })
   findAll(@Query('status') status?: AuctionStatus) {
-   /*  if (status) {
-      return this.auctionsService.findByStatus(status);
-    } */
     return this.auctionsService.findAll();
   }
 
   @Get('active')
   @ApiOperation({ summary: 'Get all active auctions' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'List of active auctions' 
-  })
+  @ApiResponse({ status: 200, description: 'List of active auctions' })
   findActive() {
     return this.auctionsService.findActiveAuctions();
   }
 
- @Get('active-current')
-  @ApiOperation({ summary: 'Get all active auction' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'List of active auctions' 
-  })
+  @Get('active-current')
+  @ApiOperation({ summary: 'Get current active auction' })
+  @ApiResponse({ status: 200, description: 'Active auction' })
   async getActive() {
     return this.auctionsService.getActiveAuction();
   }
 
+  // IMPORTANTE: rutas estáticas deben estar ANTES de rutas con parámetros (:id)
+  @Get('find-last')
+  @ApiOperation({ summary: 'Get the last closed auction' })
+  @ApiResponse({ status: 200, description: 'Last closed auction details' })
+  async findLastClosedAuction() {
+    return this.auctionsService.findLastClosedAuction();
+  }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get an auction by ID' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Auction details' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Auction not found' 
-  })
-  @ApiParam({ 
-    name: 'id', 
-    description: 'Auction ID', 
-    type: String 
-  })
+  @ApiResponse({ status: 200, description: 'Auction details' })
+  @ApiResponse({ status: 404, description: 'Auction not found' })
+  @ApiParam({ name: 'id', description: 'Auction ID', type: String })
   findOne(@Param('id') id: string) {
     return this.auctionsService.findOne(id);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update an auction' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Auction updated successfully' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Auction not found' 
-  })
-  @ApiParam({ 
-    name: 'id', 
-    description: 'Auction ID', 
-    type: String 
-  })
+  @ApiResponse({ status: 200, description: 'Auction updated successfully' })
+  @ApiResponse({ status: 404, description: 'Auction not found' })
+  @ApiParam({ name: 'id', description: 'Auction ID', type: String })
   @ApiBody({ type: UpdateAuctionDto })
   update(
     @Param('id') id: string,
@@ -131,19 +96,9 @@ export class AuctionsController {
 
   @Put(':id/status')
   @ApiOperation({ summary: 'Update auction status' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Auction status updated successfully' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Auction not found' 
-  })
-  @ApiParam({ 
-    name: 'id', 
-    description: 'Auction ID', 
-    type: String 
-  })
+  @ApiResponse({ status: 200, description: 'Auction status updated successfully' })
+  @ApiResponse({ status: 404, description: 'Auction not found' })
+  @ApiParam({ name: 'id', description: 'Auction ID', type: String })
   @ApiBody({
     schema: {
       type: 'object',
@@ -164,51 +119,19 @@ export class AuctionsController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an auction' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Auction deleted successfully' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Auction not found' 
-  })
-  @ApiParam({ 
-    name: 'id', 
-    description: 'Auction ID', 
-    type: String 
-  })
+  @ApiResponse({ status: 200, description: 'Auction deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Auction not found' })
+  @ApiParam({ name: 'id', description: 'Auction ID', type: String })
   remove(@Param('id') id: string) {
     return this.auctionsService.remove(id);
   }
 
   @Get(':id/highest-bid')
   @ApiOperation({ summary: 'Get highest bid for an auction' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Highest bid details' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Auction not found' 
-  })
-  @ApiParam({ 
-    name: 'id', 
-    description: 'Auction ID', 
-    type: String 
-  })
+  @ApiResponse({ status: 200, description: 'Highest bid details' })
+  @ApiResponse({ status: 404, description: 'Auction not found' })
+  @ApiParam({ name: 'id', description: 'Auction ID', type: String })
   getHighestBid(@Param('id') auctionId: string) {
     return this.auctionsService.getHighestBid(auctionId);
   }
-
- @Get('auction/find-last')
-  async findAuctionSales() {
-  return this.auctionsService.findLastClosedAuction();
-}
-
-
-
-
-
- 
-
 }

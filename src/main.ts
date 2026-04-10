@@ -12,53 +12,55 @@ const prefixOptions: GlobalPrefixOptions = {
 };
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true })); // ← Añade esto
-    app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     prefix: '/uploads/',
-    });
+  });
 
+  // CORS con orígenes explícitos
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:4200').split(',');
   app.enableCors({
-    origin: '*',
-    methods: '*',
-    allowedHeaders: '*',
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'platform-seed'],
     credentials: true,
   });
 
-    // Global prefix configuration for REST API endpoints
-    app.setGlobalPrefix(process.env.API_ROOT || 'api', prefixOptions);
- // Global versioning configuration for REST API endpoints
- app.enableVersioning({
-  type: VersioningType.URI,
-});
+  // Global prefix configuration for REST API endpoints
+  app.setGlobalPrefix(process.env.API_ROOT || 'api', prefixOptions);
+  
+  // Global versioning configuration for REST API endpoints
+  app.enableVersioning({
+    type: VersioningType.URI,
+  });
 
-// Global pipes configuration for REST API endpoints, including the translation for the error messages
-app.useGlobalPipes(
-  new I18nValidationPipe({
-        whitelist: true,
-    transform: true,
-    transformerPackage: require('class-transformer'),
-    transformOptions: {
-      enableImplicitConversion: true,
-    },
-    forbidUnknownValues: false,
-    forbidNonWhitelisted: false,
-  }),
-);
- // Global filter for the validation errors of the REST API endpoints
- app.useGlobalFilters(
-  new I18nValidationExceptionFilter({
-    detailedErrors: false,
-  }),
-);
-app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  // Global pipes configuration
+  app.useGlobalPipes(
+    new I18nValidationPipe({
+      whitelist: true,
+      transform: true,
+      transformerPackage: require('class-transformer'),
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+      forbidUnknownValues: false,
+      forbidNonWhitelisted: false,
+    }),
+  );
 
-  // Configuración de Swagger http://localhost:3000/api
+  // Global filter for the validation errors
+  app.useGlobalFilters(
+    new I18nValidationExceptionFilter({
+      detailedErrors: false,
+    }),
+  );
+  
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+
+  // Configuración de Swagger
   const config = new DocumentBuilder()
     .setTitle('API de Usuarios y Roles')
-     .setDescription('Documentación de la API Coffee')
+    .setDescription('Documentación de la API Coffee')
     .setVersion(process.env.API_VERSION || '1.0')
-    /* .addServer('/coffee/api')  */// 👈 importante para que Swagger genere URLs correctas en prod
-   /*  .addServer('/api')     */
     .addBearerAuth(
       {
         type: 'http',
@@ -68,7 +70,7 @@ app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
         description: 'Ingrese el token JWT',
         in: 'header',
       },
-      'JWT-auth', // Este nombre debe coincidir con el usado en el decorador @ApiBearerAuth()
+      'JWT-auth',
     )
     .addApiKey(
       {
@@ -82,10 +84,10 @@ app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-
   SwaggerModule.setup('api', app, document);
 
- const port = process.env.PORT || 3000;
-  await app.listen(port);
+  const port = process.env.PORT || 3000;
+  console.log(`🚀 Server starting on http://0.0.0.0:${port}`);
+  await app.listen(port, '0.0.0.0');
 }
 bootstrap();

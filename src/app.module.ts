@@ -22,6 +22,7 @@ import { EmailModule } from './email/email.module';
 import { UserLogsModule } from './user-logs/user-logs.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { TimeController } from './common/time.controller';
+import { BrandingModule } from './branding/branding.module';
 
 
 
@@ -49,7 +50,9 @@ import { TimeController } from './common/time.controller';
     CrudGeneratorModule,
     EmailModule,
     UserLogsModule,
-    DashboardModule], // Asegúrate que estén todos
+    DashboardModule,
+    BrandingModule,
+  ],
   controllers: [AppController,TimeController],
   providers: [AppService],
 })
