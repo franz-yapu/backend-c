@@ -88,7 +88,6 @@ model User {
   bids               Bid[]
   documents          Dms[]
   boughtTransactions Transaction[] @relation("BuyerTransactions")
-  products           Product[]
 
   @@map("user")
 }
@@ -257,53 +256,6 @@ view UserLog {
   createdAt DateTime @map("created_at")
 
   @@map("user_logs")
-}
-
-model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  price       Int      @default(0)
-  stock       Int      @default(0)
-  file        String?
-  status      String   @default("active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  categoryId  String?  @map("category_id")
-  marcaId     String?  @map("marca_id")
-  userId      String?
-
-  // Relaciones
-  category Category? @relation(fields: [categoryId], references: [id])
-  marca    Marca?    @relation(fields: [marcaId], references: [id])
-  user     User?     @relation(fields: [userId], references: [id])
-
-  @@map("product")
-}
-
-model Category {
-  id          String   @id @default(uuid())
-  name        String
-  status      String   @default("active")
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  products Product[]
-
-  @@map("categoria")
-}
-
-model Marca {
-  id        String   @id @default(uuid())
-  name      String
-  status    String   @default("active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  products Product[]
-
-  @@map("marca")
 }
 
 // ==========================================

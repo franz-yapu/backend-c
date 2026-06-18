@@ -6,10 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { ProductModule } from './product/product.module';
-import { CategoryModule } from './category/category.module';
 import { DmsModule } from './dms/dms.module';
-import { MarcaModule } from './marca/marca.module';
 import { CaffeeLotModule } from './caffee-lot/caffee-lot.module';
 
 import { TransactionModule } from './transaction/transaction.module';
@@ -42,10 +39,7 @@ import { TranslationModule } from './translation/translation.module';
     AuthModule,
     UsersModule,
     PrismaModule,
-    ProductModule,
-    CategoryModule,
     DmsModule,
-    MarcaModule,
     CaffeeLotModule,
     AuctionModule,
     BidModule,
