@@ -1,7 +1,15 @@
 // user-logs.controller.ts
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { UserLogsService } from './user-logs.service';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesEnum } from '../auth/roles.enum';
 
+// Logs de actividad de cualquier usuario: solo ADMIN.
+@ApiBearerAuth()
+@UseGuards(RolesGuard)
+@Roles(RolesEnum.ADMIN)
 @Controller('user-logs')
 export class UserLogsController {
   constructor(private readonly userLogsService: UserLogsService) {}

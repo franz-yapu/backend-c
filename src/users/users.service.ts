@@ -65,6 +65,8 @@ export class UsersService {
     return this.prisma.user.findUnique({
       where: { email },
       include: { role: true },
+      // Login necesita el hash para bcrypt.compare (password se omite globalmente).
+      omit: { password: false },
     });
   }
 

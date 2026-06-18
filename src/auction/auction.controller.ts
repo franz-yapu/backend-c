@@ -22,13 +22,23 @@ import {
 import { AuctionStatus } from '@prisma/client';
 import { AuctionsService } from './auction.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { UseGuards } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesEnum } from '../auth/roles.enum';
 
 @ApiTags('Auctions')
+// Lecturas públicas marcadas con @Public (active, find-last). Las escrituras
+// (crear/editar/estado/eliminar subasta = flujo de dinero) son solo ADMIN.
+@UseGuards(RolesGuard)
 @Controller('auctions')
 export class AuctionsController {
   constructor(private readonly auctionsService: AuctionsService) {}
 
   @Post()
+  @Roles(RolesEnum.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new auction' })
   @ApiResponse({ status: 201, description: 'Auction created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -85,6 +95,8 @@ export class AuctionsController {
   }
 
   @Put(':id')
+  @Roles(RolesEnum.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an auction' })
   @ApiResponse({ status: 200, description: 'Auction updated successfully' })
   @ApiResponse({ status: 404, description: 'Auction not found' })
@@ -98,6 +110,8 @@ export class AuctionsController {
   }
 
   @Put(':id/status')
+  @Roles(RolesEnum.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update auction status' })
   @ApiResponse({ status: 200, description: 'Auction status updated successfully' })
   @ApiResponse({ status: 404, description: 'Auction not found' })
@@ -121,6 +135,8 @@ export class AuctionsController {
   }
 
   @Delete(':id')
+  @Roles(RolesEnum.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an auction' })
   @ApiResponse({ status: 200, description: 'Auction deleted successfully' })
   @ApiResponse({ status: 404, description: 'Auction not found' })

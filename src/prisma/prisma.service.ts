@@ -38,6 +38,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         maxWait: 30000, // 20 segundos
         timeout: 30000, // 30 segundos
       },
+      // Nunca exponer el hash de password en respuestas: se omite en TODA lectura
+      // de User. Los dos sitios que sí lo necesitan (login y cambio de password)
+      // lo reincluyen explícitamente con `omit: { password: false }`.
+      omit: {
+        user: { password: true },
+      },
     });
   }
 

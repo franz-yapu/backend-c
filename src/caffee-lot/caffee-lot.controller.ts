@@ -1,28 +1,38 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Param, 
-  Put, 
-  Delete, 
-  ParseUUIDPipe, 
-  Injectable
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+  ParseUUIDPipe,
+  Injectable,
+  UseGuards
 } from '@nestjs/common';
 
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiParam, 
-  ApiBody 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+  ApiBearerAuth
 } from '@nestjs/swagger';
 import { CoffeeLotsService } from './caffee-lot.service';
 import { CreateCoffeeLotDto } from './dto/create-caffee-lot.dto';
 import { UpdateCoffeeLotDto } from './dto/update-caffee-lot.dto';
 import { AddCoffeeLotToAuctionDto } from './dto/add-coffee-lot-to-auction.dto';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesEnum } from '../auth/roles.enum';
 
 @ApiTags('Coffee Lots')
+// Gestión de lotes de café (el público los ve embebidos en /auctions/active,
+// no por aquí): todo el controller es solo ADMIN.
+@ApiBearerAuth()
+@UseGuards(RolesGuard)
+@Roles(RolesEnum.ADMIN)
 @Controller('coffee-lots')
 @Injectable()
 export class CoffeeLotsController {

@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  Request,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -27,32 +28,40 @@ import { Role } from '@prisma/client';
 import { RolesEnum } from 'src/auth/roles.enum';
 
 @ApiTags('users')
-/* @ApiBearerAuth() */
+@ApiBearerAuth()
+// Autenticación por el guard global; RolesGuard añade autorización por rol.
+// Los métodos con @Roles(ADMIN) son solo admin; los que no lo llevan (p. ej.
+// GET /users/me) quedan abiertos a cualquier usuario autenticado.
+@UseGuards(RolesGuard)
 @Controller('users')
-/* @UseGuards(JwtAuthGuard, RolesGuard) */
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
   @Post()
-  // Crear usuarios con rol arbitrario (incl. ADMIN) es SOLO para admins. El
-  // guard global ya autentica; RolesGuard + @Roles añade la autorización.
-  @UseGuards(RolesGuard)
+  // Crear usuarios con rol arbitrario (incl. ADMIN) es SOLO para admins.
   @Roles(RolesEnum.ADMIN)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear nuevo usuario (solo ADMIN)' })
   async create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.createUser(createUserDto);
   }
 
+  // Perfil del usuario autenticado: el id sale del JWT, NUNCA del cliente.
+  // Sustituye al uso de /dynamic/user para que el comprador lea sus propios datos.
+  @Get('me')
+  @ApiOperation({ summary: 'Perfil del usuario autenticado' })
+  async me(@Request() req: any) {
+    return this.usersService.findById(req.user.userId);
+  }
+
   @Get()
-/*   @Roles(RolesEnum.ADMIN, RolesEnum.BUYER) // Usa el enum aquí */
-  @ApiOperation({ summary: 'Listar todos los usuarios (ADMIN, BUYER)' })
+  @Roles(RolesEnum.ADMIN)
+  @ApiOperation({ summary: 'Listar todos los usuarios (solo ADMIN)' })
   async findAll() {
     return this.usersService.findAll();
   }
 
   @Get(':id')
-/*   @Roles(RolesEnum.ADMIN, RolesEnum.BUYER, RolesEnum.BUYER) */
-  @ApiOperation({ summary: 'Obtener usuario por ID' })
+  @Roles(RolesEnum.ADMIN)
+  @ApiOperation({ summary: 'Obtener usuario por ID (solo ADMIN)' })
   @ApiParam({
     name: 'id',
     type: String,
@@ -72,7 +81,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-/*   @Roles(RolesEnum.ADMIN) */
+  @Roles(RolesEnum.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar usuario (solo ADMIN)' })
   @ApiParam({
@@ -93,7 +102,8 @@ export class UsersController {
   }
 
   @Get('roles/list')
-  @ApiOperation({ summary: 'Obtener todos los roles disponibles' })
+  @Roles(RolesEnum.ADMIN)
+  @ApiOperation({ summary: 'Obtener todos los roles disponibles (solo ADMIN)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Lista de roles obtenida exitosamente',

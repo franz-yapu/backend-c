@@ -117,9 +117,11 @@ export class AuthService {
   async changePassword(changePasswordDto: ChangePasswordDto) {
     const { userId, currentPassword, newPassword } = changePasswordDto;
 
-    // 1. Validar usuario y contraseña actual
+    // 1. Validar usuario y contraseña actual (password se omite globalmente:
+    //    aquí se reincluye para poder comparar el hash).
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      omit: { password: false },
     });
 
     if (!user || !(await bcrypt.compare(currentPassword, user.password))) {

@@ -1,34 +1,54 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Param, 
-  Put, 
-  Delete, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
   ParseUUIDPipe,
-  Query 
+  Query,
+  UseGuards,
+  Request,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiParam, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
   ApiBody,
-  ApiQuery 
+  ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TransactionsService } from './transaction.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesEnum } from '../auth/roles.enum';
 
 @ApiTags('Transactions')
+// Autenticación global; RolesGuard añade autorización. Los métodos con
+// @Roles(ADMIN) son admin; los de "mis datos" (user/:id, buyer/:id/wins) validan
+// que el id sea el del propio usuario (o admin); las ventas (sales) son @Public.
+@ApiBearerAuth()
+@UseGuards(RolesGuard)
 @Controller('transactions')
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
+  // El id del path debe ser el del usuario autenticado, salvo que sea ADMIN.
+  private assertSelfOrAdmin(req: any, idFromPath: string) {
+    if (req.user?.role !== RolesEnum.ADMIN && req.user?.userId !== idFromPath) {
+      throw new ForbiddenException('Solo puedes consultar tus propios datos');
+    }
+  }
+
   @Post()
+  @Roles(RolesEnum.ADMIN)
   @ApiOperation({ summary: 'Create a new transaction' })
   @ApiResponse({ 
     status: 201, 
@@ -48,6 +68,7 @@ export class TransactionsController {
   }
 
   @Get()
+  @Roles(RolesEnum.ADMIN)
   @ApiOperation({ summary: 'Get all transactions' })
   @ApiResponse({ 
     status: 200, 
@@ -66,6 +87,7 @@ export class TransactionsController {
   }
 
   @Get(':id')
+  @Roles(RolesEnum.ADMIN)
   @ApiOperation({ summary: 'Get a transaction by ID' })
   @ApiResponse({ 
     status: 200, 
@@ -84,6 +106,7 @@ export class TransactionsController {
   }
 
   @Put(':id')
+  @Roles(RolesEnum.ADMIN)
   @ApiOperation({ summary: 'Update a transaction' })
   @ApiResponse({ 
     status: 200, 
@@ -106,6 +129,7 @@ export class TransactionsController {
   }
 
   @Put(':id/status')
+  @Roles(RolesEnum.ADMIN)
   @ApiOperation({ summary: 'Update transaction status' })
   @ApiResponse({ 
     status: 200, 
@@ -142,6 +166,7 @@ export class TransactionsController {
   }
 
   @Delete(':id')
+  @Roles(RolesEnum.ADMIN)
   @ApiOperation({ summary: 'Delete a transaction' })
   @ApiResponse({ 
     status: 200, 
@@ -160,6 +185,7 @@ export class TransactionsController {
   }
 
   @Get('auction/:auctionId')
+  @Roles(RolesEnum.ADMIN)
   @ApiOperation({ summary: 'Get transactions by auction ID' })
   @ApiResponse({ 
     status: 200, 
@@ -183,7 +209,8 @@ export class TransactionsController {
     name: 'userId', 
     description: 'User ID' 
   })
-  findByUser(@Param('userId') userId: string) {
+  findByUser(@Param('userId') userId: string, @Request() req: any) {
+    this.assertSelfOrAdmin(req, userId);
     return this.transactionsService.findByUser(userId);
   }
 
@@ -197,7 +224,8 @@ export class TransactionsController {
 @ApiOperation({ summary: 'Get all coffee lots won by a buyer' })
 @ApiResponse({ status: 200, description: 'List of coffee lots won by the buyer' })
 @ApiParam({ name: 'buyerId', description: 'Buyer ID' })
-findBuyerWins(@Param('buyerId') buyerId: string) {
+findBuyerWins(@Param('buyerId') buyerId: string, @Request() req: any) {
+  this.assertSelfOrAdmin(req, buyerId);
   return this.transactionsService.findBuyerWins(buyerId);
 }
 

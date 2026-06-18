@@ -8,6 +8,7 @@ import {
   Patch,
   Query,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -16,10 +17,21 @@ import {
   ApiBody,
   ApiResponse,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { CrudGeneratorService } from './crud-generator.service';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesEnum } from '../auth/roles.enum';
 
 @ApiTags('Dynamic CRUD')
+// CRUD genérico sobre CUALQUIER modelo Prisma: SOLO ADMIN. Antes lo alcanzaba
+// cualquier usuario autenticado, que podía crear/editar registros arbitrarios
+// (p. ej. un User con rol ADMIN, o un Role nuevo) → escalada de privilegios.
+// El guard global ya autentica; RolesGuard añade la autorización por rol.
+@ApiBearerAuth()
+@UseGuards(RolesGuard)
+@Roles(RolesEnum.ADMIN)
 @Controller('dynamic/:modelName')
 export class CrudGeneratorController {
   constructor(private readonly crudService: CrudGeneratorService) {}
