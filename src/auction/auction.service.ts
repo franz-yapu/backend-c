@@ -151,7 +151,26 @@ export class AuctionsService {
   }
 
   async update(id: string, updateAuctionDto: UpdateAuctionDto) {
-    await this.findOne(id);
+    const auction = await this.findOne(id);
+
+    // Precondiciones de activación (también por esta ruta, que es la que usa el
+    // front): solo se activa una subasta en DRAFT y con al menos un lote. Antes
+    // solo updateStatus lo exigía → por aquí se podía activar una subasta vacía.
+    if (updateAuctionDto.status === AuctionStatus.ACTIVE) {
+      if (auction.status !== AuctionStatus.DRAFT) {
+        throw new BadRequestException(
+          'Solo se pueden activar subastas en borrador (DRAFT)',
+        );
+      }
+      const lotsCount = await this.prisma.auctionCoffeeLot.count({
+        where: { auctionId: id },
+      });
+      if (lotsCount === 0) {
+        throw new BadRequestException(
+          'No se puede activar una subasta sin lotes de café',
+        );
+      }
+    }
 
     // Coherencia status⟺isActive: ACTIVE ⇒ isActive true; DRAFT/CLOSED ⇒ false.
     // No dejamos que el cliente envíe combinaciones incoherentes (p. ej. status

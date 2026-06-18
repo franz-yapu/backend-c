@@ -1,11 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsNumber, 
-  IsOptional, 
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsPositive,
+  IsOptional,
   IsDateString,
-  IsEnum, 
+  IsEnum,
   IsDate,
   IsISO8601,
   IsBoolean
@@ -40,6 +41,7 @@ export class CreateAuctionDto {
     required: false 
   })
   @IsNumber()
+  @IsPositive() // Debe ser > 0 si se envía (un incremento ≤ 0 rompe la equidad).
   @IsOptional()
   minIncrement?: number;
 
