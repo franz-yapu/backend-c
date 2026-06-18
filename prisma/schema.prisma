@@ -201,6 +201,9 @@ model Auction {
 
   
   @@index([status, isActive])
+  // Índice ÚNICO PARCIAL `one_active_auction` (isActive WHERE isActive=true):
+  // garantiza a nivel BD que solo haya UNA subasta activa. Prisma no expresa
+  // índices parciales, así que vive en la migración `..._one_active_auction`.
   @@map("auctions")
 }
 

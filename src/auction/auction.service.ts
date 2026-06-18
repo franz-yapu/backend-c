@@ -108,7 +108,9 @@ export class AuctionsService {
 
   async findActiveAuctions() {
     return this.prisma.auction.findMany({
-      where: { status: 'ACTIVE' },
+      // Exige ambos: status ACTIVE y isActive. Evita devolver "zombies" con
+      // status ACTIVE pero isActive false. Refuerza "solo una activa".
+      where: { status: 'ACTIVE', isActive: true },
       include: {
         admin: true,
         seller: true,
@@ -149,32 +151,25 @@ export class AuctionsService {
   }
 
   async update(id: string, updateAuctionDto: UpdateAuctionDto) {
-    const auction = await this.findOne(id);
+    await this.findOne(id);
 
+    // Coherencia status⟺isActive: ACTIVE ⇒ isActive true; DRAFT/CLOSED ⇒ false.
+    // No dejamos que el cliente envíe combinaciones incoherentes (p. ej. status
+    // ACTIVE con isActive false, que generaba "zombies" en /auctions/active).
+    const data: any = { ...updateAuctionDto };
     if (updateAuctionDto.status === AuctionStatus.ACTIVE) {
-      const activeAuction = await this.prisma.auction.findFirst({
-        where: {
-          status: AuctionStatus.ACTIVE,
-          isActive: true,
-          NOT: { id }
-        }
-      });
-
-      if (activeAuction) {
-        throw new ConflictException('There is already an active auction. Only one active auction is allowed at a time.');
-      }
+      data.isActive = true;
+    } else if (
+      updateAuctionDto.status === AuctionStatus.DRAFT ||
+      updateAuctionDto.status === AuctionStatus.CLOSED
+    ) {
+      data.isActive = false;
     }
 
-    const updatedAuction = await this.prisma.auction.update({
-      where: { id },
-      data: updateAuctionDto,
-      include: {
-        admin: true,
-        seller: true,
-        auctionDetails: {
-          include: { coffeeLot: true }
-        }
-      },
+    const updatedAuction = await this.activateGuarded(id, data, {
+      admin: true,
+      seller: true,
+      auctionDetails: { include: { coffeeLot: true } },
     });
 
     if (updateAuctionDto.status === AuctionStatus.ACTIVE) {
@@ -184,6 +179,39 @@ export class AuctionsService {
     }
 
     return updatedAuction;
+  }
+
+  /**
+   * Actualiza la subasta garantizando la invariante "solo UNA activa":
+   *  - chequeo previo (mensaje claro) dentro de una transacción, y
+   *  - el índice único parcial de BD (one_active_auction) como red de seguridad
+   *    atómica frente a activaciones concurrentes (race check-then-act).
+   */
+  private async activateGuarded(id: string, data: any, include: any) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        if (data.isActive === true) {
+          const other = await tx.auction.findFirst({
+            where: { isActive: true, NOT: { id } },
+            select: { id: true },
+          });
+          if (other) {
+            throw new ConflictException(
+              'Ya hay una subasta activa. Ciérrala antes de activar otra (solo se permite una activa a la vez).',
+            );
+          }
+        }
+        return tx.auction.update({ where: { id }, data, include });
+      });
+    } catch (e: any) {
+      // Violación del índice único parcial (dos activaciones en carrera).
+      if (e?.code === 'P2002') {
+        throw new ConflictException(
+          'Ya hay una subasta activa. Ciérrala antes de activar otra (solo se permite una activa a la vez).',
+        );
+      }
+      throw e;
+    }
   }
 
   async remove(id: string) {
@@ -218,25 +246,16 @@ export class AuctionsService {
       if (lotsCount === 0) {
         throw new BadRequestException('Cannot activate auction without coffee lots');
       }
-
-      await this.prisma.auction.updateMany({
-        where: { isActive: true },
-        data: { isActive: false }
-      });
     }
 
-    const updatedAuction = await this.prisma.auction.update({
-      where: { id },
-      data: {
-        status,
-        isActive: status === AuctionStatus.ACTIVE
-      },
-      include: {
-        auctionDetails: {
-          include: { coffeeLot: true }
-        }
-      }
-    });
+    // Misma garantía que update(): BLOQUEA si ya hay otra activa (antes esta ruta
+    // desactivaba silenciosamente las demás y dejaba la anterior como zombie
+    // status=ACTIVE,isActive=false). El índice único parcial cubre el race.
+    const updatedAuction = await this.activateGuarded(
+      id,
+      { status, isActive: status === AuctionStatus.ACTIVE },
+      { auctionDetails: { include: { coffeeLot: true } } },
+    );
 
     if (status === AuctionStatus.ACTIVE) {
       this.auctionTimerService.onAuctionActivated(id);
