@@ -1,25 +1,29 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  Get, 
-  Param, 
-  ParseUUIDPipe, 
-  Query 
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  Request,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { CreateBidDto } from './dto/create-bid.dto';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiBody, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
   ApiParam,
-  ApiQuery 
+  ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { BidResponseDto } from './dto/bid-response.dto';
 import { BidsService } from './bid.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { RolesEnum } from '../auth/roles.enum';
 
 @ApiTags('Bids')
 @Controller('bids')
@@ -27,23 +31,19 @@ export class BidsController {
   constructor(private readonly bidsService: BidsService) {}
 
   @Post()
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Place a new bid' })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Bid placed successfully',
-    type: BidResponseDto
-  })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Invalid bid amount or auction not active' 
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Auction or user not found' 
-  })
+  @ApiResponse({ status: 201, description: 'Bid placed successfully', type: BidResponseDto })
+  @ApiResponse({ status: 400, description: 'Invalid bid amount or auction not active' })
+  @ApiResponse({ status: 404, description: 'Auction or user not found' })
   @ApiBody({ type: CreateBidDto })
-  create(@Body() createBidDto: CreateBidDto) {
-    return this.bidsService.create(createBidDto);
+  create(@Body() createBidDto: CreateBidDto, @Request() req: any) {
+    // Identidad SIEMPRE del JWT (no del body → no se puede pujar como otro) y
+    // mismo camino con advisory lock + minIncrement que el socket. Antes esta
+    // ruta REST tomaba userId del body y NO bloqueaba → puenteaba toda la
+    // equidad/seguridad de las pujas.
+    createBidDto.userId = req.user.userId;
+    return this.bidsService.createWithOptimisticLock(createBidDto);
   }
 
   @Get('auction/:auctionId')
@@ -96,10 +96,16 @@ export class BidsController {
     required: false,
     description: 'Limit number of results'
   })
+  @ApiBearerAuth()
   getUserBids(
     @Param('userId') userId: string,
-    @Query('limit') limit?: number
+    @Request() req: any,
+    @Query('limit') limit?: number,
   ) {
+    // Solo tus propias pujas (o ADMIN): el userId del path no puede ser de otro.
+    if (req.user?.role !== RolesEnum.ADMIN && req.user?.userId !== userId) {
+      throw new ForbiddenException('Solo puedes consultar tus propias pujas');
+    }
     return this.bidsService.getUserBids(userId);
   }
 

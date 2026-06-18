@@ -106,74 +106,9 @@ export class BidsService {
     });
   }
 
-  async create(createBidDto: CreateBidDto) {
-    const { userId, auctionId, coffeeLotId, amount } = createBidDto;
-
-    // 1️⃣ Validaciones existentes
-    const auction = await this.prisma.auction.findUnique({
-      where: { id: auctionId },
-      include: {
-        auctionDetails: {
-          where: { coffeeLotId },
-          include: { coffeeLot: true },
-        },
-      },
-    });
-
-    if (!auction) throw new NotFoundException('Subasta no encontrada');
-    if (auction.status !== AuctionStatus.ACTIVE)
-      throw new BadRequestException('La subasta no está activa');
-
-    const coffeeLotInAuction = auction.auctionDetails[0];
-    if (!coffeeLotInAuction)
-      throw new BadRequestException('El lote no está incluido en esta subasta');
-
-    const highestBid = await this.findHighestBidForCoffeeLot(auctionId, coffeeLotId);
-    const minBidAmount = highestBid
-      ? Number(highestBid.amount) + Number(auction.minIncrement)
-      : Number(coffeeLotInAuction.startingPrice);
-
-    if (amount < minBidAmount)
-      throw new BadRequestException(`El monto debe ser al menos ${minBidAmount}`);
-
-    // 2️⃣ Validación de duplicado: mismo usuario, mismo lote, mismo monto y última puja en pocos segundos
-    if (highestBid) {
-      const diffSeconds = (new Date().getTime() - new Date(highestBid.createdAt).getTime()) / 1000;
-
-      if (
-        highestBid.userId === userId &&
-        highestBid.coffeeLotId === coffeeLotId &&
-        Number(highestBid.amount) === amount &&
-        diffSeconds < 5 // ajustar intervalo según necesidad
-      ) {
-        throw new BadRequestException('Puja duplicada detectada. Espera unos segundos.');
-      }
-    }
-
-    // 3️⃣ Crear puja
-    const bid = await this.prisma.bid.create({
-      data: {
-        amount,
-        auction: { connect: { id: auctionId } },
-        user: { connect: { id: userId } },
-        coffeeLot: { connect: { id: coffeeLotId } },
-      },
-      include: {
-        user: { select: { id: true, firstName: true, lastName: true, companyName: true } },
-        auction: true,
-        coffeeLot: true,
-      },
-    });
-
-    // 4️⃣ Actualizar precio del lote
-    await this.prisma.auctionCoffeeLot.update({
-      where: { id: coffeeLotInAuction.id },
-      data: { currentPrice: amount },
-    });
-
-    // 5️⃣ Retornar la puja creada
-    return bid;
-  }
+  // NOTA: el antiguo create() REST (sin advisory lock y con userId del body) se
+  // eliminó por ser una puerta paralela insegura. POST /bids ahora usa
+  // createWithOptimisticLock con el userId del JWT (ver BidsController).
 
   // Nuevo método para obtener la puja más alta por lote
   async findHighestBidForCoffeeLot(auctionId: string, coffeeLotId: string) {
