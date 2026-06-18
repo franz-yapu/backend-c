@@ -21,6 +21,7 @@ import {
   ApiQuery 
 } from '@nestjs/swagger';
 import { TransactionsService } from './transaction.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Transactions')
 @Controller('transactions')
@@ -186,6 +187,7 @@ export class TransactionsController {
     return this.transactionsService.findByUser(userId);
   }
 
+  @Public() // Página pública /winners lista las ventas (ganadores) de una subasta.
   @Get('auction/:auctionId/sales')
   async findAuctionSales(@Param('auctionId') auctionId: string) {
   return this.transactionsService.findAuctionSales(auctionId);

@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { AuctionStatus } from '@prisma/client';
 import { AuctionsService } from './auction.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Auctions')
 @Controller('auctions')
@@ -50,6 +51,7 @@ export class AuctionsController {
     return this.auctionsService.findAll();
   }
 
+  @Public() // Página pública /auction lista las subastas activas.
   @Get('active')
   @ApiOperation({ summary: 'Get all active auctions' })
   @ApiResponse({ status: 200, description: 'List of active auctions' })
@@ -65,6 +67,7 @@ export class AuctionsController {
   }
 
   // IMPORTANTE: rutas estáticas deben estar ANTES de rutas con parámetros (:id)
+  @Public() // Página pública /winners muestra la última subasta cerrada.
   @Get('find-last')
   @ApiOperation({ summary: 'Get the last closed auction' })
   @ApiResponse({ status: 200, description: 'Last closed auction details' })

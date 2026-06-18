@@ -44,7 +44,11 @@ export class BidsService {
   async findHighestBid(auctionId: string) {
     const bids = await this.prisma.bid.findMany({
       where: { auctionId },
-      orderBy: { amount: 'desc' },
+      orderBy: [
+        { amount: 'desc' },
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
       take: 1,
       include: {
         user: {
@@ -126,8 +130,8 @@ export class BidsService {
 
     const highestBid = await this.findHighestBidForCoffeeLot(auctionId, coffeeLotId);
     const minBidAmount = highestBid
-      ? highestBid.amount + auction.minIncrement
-      : coffeeLotInAuction.startingPrice;
+      ? Number(highestBid.amount) + Number(auction.minIncrement)
+      : Number(coffeeLotInAuction.startingPrice);
 
     if (amount < minBidAmount)
       throw new BadRequestException(`El monto debe ser al menos ${minBidAmount}`);
@@ -139,7 +143,7 @@ export class BidsService {
       if (
         highestBid.userId === userId &&
         highestBid.coffeeLotId === coffeeLotId &&
-        highestBid.amount === amount &&
+        Number(highestBid.amount) === amount &&
         diffSeconds < 5 // ajustar intervalo según necesidad
       ) {
         throw new BadRequestException('Puja duplicada detectada. Espera unos segundos.');
@@ -174,11 +178,15 @@ export class BidsService {
   // Nuevo método para obtener la puja más alta por lote
   async findHighestBidForCoffeeLot(auctionId: string, coffeeLotId: string) {
     const bids = await this.prisma.bid.findMany({
-      where: { 
+      where: {
         auctionId,
-        coffeeLotId 
+        coffeeLotId
       },
-      orderBy: { amount: 'desc' },
+      orderBy: [
+        { amount: 'desc' },
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
       take: 1,
       include: {
         user: {
@@ -213,9 +221,10 @@ export class BidsService {
 
     for (let i = 0; i < bids.length; i++) {
       const currentBid = bids[i]; // usamos currentBid en vez de bid
-      if (!seenAmounts.has(currentBid.amount)) {
+      const amountNum = Number(currentBid.amount);
+      if (!seenAmounts.has(amountNum)) {
         filteredBids.push(currentBid);
-        seenAmounts.add(currentBid.amount);
+        seenAmounts.add(amountNum);
       }
       if (filteredBids.length >= limit) break;
     }
@@ -270,7 +279,7 @@ export class BidsService {
     });
 
     if (highestBid) {
-      return highestBid.amount;
+      return Number(highestBid.amount);
     }
 
     // Si no hay pujas, obtener precio inicial del lote
@@ -284,16 +293,25 @@ export class BidsService {
       },
     });
 
-    return auctionDetail?.startingPrice || 0;
+    return Number(auctionDetail?.startingPrice ?? 0);
   }
 
   async createWithOptimisticLock(createBidDto: CreateBidDto): Promise<any> {
     const TRANSACTION_TIMEOUT = 15000;
-    return this.prisma.$transaction(async (tx) => { 
+    return this.prisma.$transaction(async (tx) => {
+      // 🔒 Serialización por lote a nivel de BASE DE DATOS.
+      // Las pujas concurrentes al MISMO lote se procesan una a una: la cerradura
+      // se mantiene hasta que esta transacción hace commit/rollback. A diferencia
+      // del candado en memoria, esto es correcto incluso con varias instancias del
+      // backend y evita por completo que dos pujas lean el mismo precio a la vez.
+      // $executeRaw (no $queryRaw): pg_advisory_xact_lock devuelve `void` y
+      // $queryRaw fallaría al intentar deserializar esa columna.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${createBidDto.coffeeLotId})::int8)`;
+
       // 0. Validar que la subasta siga activa y no haya pasado su fecha de fin
       const auction = await tx.auction.findUnique({
         where: { id: createBidDto.auctionId },
-        select: { status: true, endDate: true }
+        select: { status: true, endDate: true, minIncrement: true }
       });
       if (!auction || auction.status !== 'ACTIVE') {
         throw new Error('La subasta no está activa');
@@ -310,7 +328,7 @@ export class BidsService {
         },
         orderBy: { amount: 'desc' },
         select: { amount: true },
-      }).then(res => res?.amount || 0);
+      }).then(res => Number(res?.amount ?? 0));
 
       if (currentPrice === 0) {
         const auctionDetail = await tx.auctionCoffeeLot.findFirst({
@@ -320,14 +338,26 @@ export class BidsService {
           },
           select: { startingPrice: true },
         });
-        if (auctionDetail?.startingPrice && createBidDto.amount < auctionDetail.startingPrice) {
-          throw new Error(`El monto inicial debe ser al menos de $${auctionDetail.startingPrice}`);
+        const startingPrice = Number(auctionDetail?.startingPrice ?? 0);
+        if (startingPrice && createBidDto.amount < startingPrice) {
+          throw new Error(`El monto inicial debe ser al menos de $${startingPrice}`);
         }
       }
 
-      // 2. Validar que el monto sea mayor
-      if (currentPrice > 0 && createBidDto.amount <= currentPrice) {
-        throw new Error(`El monto debe ser mayor al precio actual ($${currentPrice})`);
+      // 2. Validar que el monto respete el incremento mínimo de la subasta.
+      // El front ya lo exige, pero el servidor debe imponerlo también por la vía
+      // socket: si no, un cliente manipulado podría pujar currentPrice + 0.01 y
+      // saltarse el minIncrement, rompiendo la equidad de la puja.
+      if (currentPrice > 0) {
+        const minIncrement = Number(auction.minIncrement ?? 0);
+        const minBidAmount = currentPrice + minIncrement;
+        // Estrictamente mayor al precio actual aunque minIncrement sea 0, y
+        // siempre respetando el incremento mínimo cuando lo haya.
+        if (createBidDto.amount <= currentPrice || createBidDto.amount < minBidAmount) {
+          throw new Error(
+            `El monto debe ser al menos de $${minBidAmount} (precio actual $${currentPrice} + incremento mínimo $${minIncrement})`,
+          );
+        }
       }
 
       // 3. Crear la puja
@@ -373,9 +403,13 @@ export class BidsService {
         auctionId,
         coffeeLotId,
       },
-      orderBy: {
-        amount: 'desc',
-      },
+      // Desempate determinista IDÉNTICO al del cierre de subasta:
+      // a igual monto gana el primero en el tiempo.
+      orderBy: [
+        { amount: 'desc' },
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
       select: {
         id: true,
       },

@@ -68,7 +68,7 @@ export class BuyerDashboardService {
         maxBid: item._max.amount,
       })),
       topBids: bids
-        .sort((a, b) => b.amount - a.amount)
+        .sort((a, b) => Number(b.amount) - Number(a.amount))
         .slice(0, 5),
     };
   }
@@ -207,11 +207,11 @@ export class BuyerDashboardService {
       }
       
       const data = varietyMap.get(variety);
-      if (item.currentPrice && item.currentPrice > 0) {
-        data.currentPrices.push(item.currentPrice);
+      if (Number(item.currentPrice) > 0) {
+        data.currentPrices.push(Number(item.currentPrice));
       }
-      if (item.startingPrice && item.startingPrice > 0) {
-        data.startingPrices.push(item.startingPrice);
+      if (Number(item.startingPrice) > 0) {
+        data.startingPrices.push(Number(item.startingPrice));
       }
       if (item.coffeeLot.cupScore) {
         data.cupScores.push(item.coffeeLot.cupScore);
@@ -483,11 +483,11 @@ export class BuyerDashboardService {
         }
         
         const data = monthlyData.get(monthKey);
-        if (item.currentPrice && item.currentPrice > 0) {
-          data.prices.push(item.currentPrice);
+        if (Number(item.currentPrice) > 0) {
+          data.prices.push(Number(item.currentPrice));
         }
-        if (item.startingPrice && item.startingPrice > 0) {
-          data.startingPrices.push(item.startingPrice);
+        if (Number(item.startingPrice) > 0) {
+          data.startingPrices.push(Number(item.startingPrice));
         }
         data.count++;
       });

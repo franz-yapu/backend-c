@@ -15,7 +15,7 @@ import { DmsService } from './dms.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { join } from 'path';
+import { join, basename } from 'path';
 import { Response } from 'express';
 import * as fs from 'fs';
 import {
@@ -26,6 +26,7 @@ import {
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { DmsResponseDto } from './dto/create-dm.dto';
+import { Public } from '../auth/decorators/public.decorator';
 
 
 
@@ -35,9 +36,17 @@ import { DmsResponseDto } from './dto/create-dm.dto';
 export class DmsController {
   constructor(private readonly dmsService: DmsService) {}
 
-   @Get('uploads/:filename')
+  // Streaming de archivos: público, equivalente al estático /uploads (las <img>
+  // del front lo consumen sin token). El resto de /dms (upload, metadatos) sí
+  // exige JWT por el guard global.
+  @Public()
+  @Get('uploads/:filename')
   getFile(@Param('filename') filename: string, @Res() res: Response) {
-    const filePath = join(process.cwd(), 'uploads', filename);
+    // Saneo anti path-traversal: nos quedamos solo con el nombre base, así un
+    // `../../etc/passwd` no puede escapar de la carpeta uploads (el endpoint es
+    // público).
+    const safeName = basename(filename);
+    const filePath = join(process.cwd(), 'uploads', safeName);
     if (!fs.existsSync(filePath)) {
       throw new NotFoundException('Archivo no encontrado');
     }

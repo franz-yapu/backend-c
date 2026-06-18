@@ -1,7 +1,17 @@
-import { IsString, IsOptional, IsBoolean, Matches } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsIn,
+  MaxLength,
+  Matches,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 const HEX_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+// Acepta 0, o un número (con decimales) seguido de unidad CSS válida: 8px, 0.5rem, 50%.
+const BORDER_RADIUS_REGEX = /^(0|\d{1,3}(\.\d+)?(px|rem|em|%))$/;
+const THEME_MODES = ['light', 'dark', 'auto'];
 
 export class CreateBrandingDto {
   @ApiProperty({ example: '#CA3636' })
@@ -50,20 +60,37 @@ export class CreateBrandingDto {
   @Matches(HEX_REGEX)
   textColor?: string;
 
-  @ApiProperty({ example: 'light', enum: ['light', 'dark', 'auto'], required: false })
+  @ApiProperty({ example: 'light', enum: THEME_MODES, required: false })
   @IsOptional()
   @IsString()
+  @IsIn(THEME_MODES)
   themeMode?: string;
 
   @ApiProperty({ example: 'Inter', required: false })
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   fontFamily?: string;
 
   @ApiProperty({ example: '4px', required: false })
   @IsOptional()
   @IsString()
+  @Matches(BORDER_RADIUS_REGEX, {
+    message: 'borderRadius debe ser 0 o un valor con unidad CSS (ej. 8px, 0.5rem, 50%)',
+  })
   borderRadius?: string;
+
+  @ApiProperty({ example: 'Cáritas Bolivia', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  institutionName?: string;
+
+  @ApiProperty({ example: 'Cáritas', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  institutionShortName?: string;
 }
 
 export class UpdateBrandingDto {
@@ -115,23 +142,40 @@ export class UpdateBrandingDto {
   @Matches(HEX_REGEX)
   textColor?: string;
 
-  @ApiProperty({ example: 'light', enum: ['light', 'dark', 'auto'], required: false })
+  @ApiProperty({ example: 'light', enum: THEME_MODES, required: false })
   @IsOptional()
   @IsString()
+  @IsIn(THEME_MODES)
   themeMode?: string;
 
   @ApiProperty({ example: 'Inter', required: false })
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   fontFamily?: string;
 
   @ApiProperty({ example: '4px', required: false })
   @IsOptional()
   @IsString()
+  @Matches(BORDER_RADIUS_REGEX, {
+    message: 'borderRadius debe ser 0 o un valor con unidad CSS (ej. 8px, 0.5rem, 50%)',
+  })
   borderRadius?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiProperty({ example: 'Cáritas Bolivia', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  institutionName?: string;
+
+  @ApiProperty({ example: 'Cáritas', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  institutionShortName?: string;
 }

@@ -12,6 +12,8 @@ import { BidsService } from './bid.service';
 import { AuctionClosureService } from '../auction/auction-closure.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { jwtConstants } from '../auth/constants';
 
 @WebSocketGateway({
   cors: {
@@ -33,7 +35,9 @@ export class BidsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     timestamp: number;
   }>>();
 
-  private readonly pendingBids = new Map<string, Promise<any>>(); // Para manejar condiciones de carrera
+  // Cola de procesamiento por lote: guarda la "cola" (última promesa encadenada)
+  // de cada lote para serializar las pujas en orden de llegada. Ver handlePlaceBid.
+  private readonly pendingBids = new Map<string, Promise<void>>();
   private heartbeatInterval: NodeJS.Timeout;
   private inactiveCheckInterval: NodeJS.Timeout;
   private isServerReady = false;
@@ -74,6 +78,7 @@ export class BidsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly bidsService: BidsService,
     private readonly auctionClosureService: AuctionClosureService,
+    private readonly jwtService: JwtService,
   ) {
     // Inicializar después de un breve delay para asegurar que el servidor esté listo
     setTimeout(() => {
@@ -86,9 +91,38 @@ export class BidsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  // Extrae el JWT del handshake (auth.token o header Authorization)
+  private extractToken(client: Socket): string | null {
+    const rawAuth = (client.handshake?.auth?.token as string) || '';
+    const rawHeader = (client.handshake?.headers?.authorization as string) || '';
+    const raw = rawAuth || rawHeader;
+    if (!raw) return null;
+    return raw.startsWith('Bearer ') ? raw.slice(7) : raw;
+  }
+
   handleConnection(client: Socket) {
-    this.logger.log(`🔌 Client connected: ${client.id}`);
     this.isServerReady = true;
+
+    // Autenticación del socket: el userId SIEMPRE sale del token verificado,
+    // nunca del payload de la puja. Si no hay token válido, se permite la
+    // conexión en modo solo-lectura (recibe difusiones) pero no podrá pujar.
+    const token = this.extractToken(client);
+    if (token) {
+      try {
+        const payload: any = this.jwtService.verify(token, {
+          secret: jwtConstants.secret,
+        });
+        client.data.userId = payload.sub;
+        client.data.role = payload.role;
+      } catch (error) {
+        this.logger.warn(`🔒 Socket ${client.id} con token inválido/expirado (modo solo-lectura)`);
+      }
+    }
+
+    this.logger.log(
+      `🔌 Client connected: ${client.id}` +
+        (client.data?.userId ? ` (user ${client.data.userId})` : ' (anónimo)'),
+    );
 
     this.clientConnections.set(client.id, {
       lastPing: Date.now(),
@@ -180,6 +214,18 @@ private checkInactiveConnections() {
     @MessageBody() createBidDto: CreateBidDto,
     @ConnectedSocket() client: Socket,
   ) {
+    // 🔒 Identidad confiable: el userId proviene del JWT verificado en la conexión,
+    // NO del payload del cliente (evita pujar en nombre de otro).
+    const authUserId = client.data?.userId as string | undefined;
+    if (!authUserId) {
+      client.emit('bidResponse', {
+        event: 'bidError',
+        data: 'No autenticado. Vuelve a iniciar sesión para pujar.',
+      });
+      return;
+    }
+    createBidDto.userId = authUserId;
+
     const clientData = this.clientConnections.get(client.id);
     const HIGH_LATENCY_THRESHOLD = 1000; // 1 segundo
 
@@ -194,21 +240,34 @@ private checkInactiveConnections() {
     }
     const bidKey = `${createBidDto.auctionId}-${createBidDto.coffeeLotId}`;
 
-    // Evitar condiciones de carrera: procesar una puja a la vez por lote
-    if (this.pendingBids.has(bidKey)) {
-      client.emit('bidResponse', {
-        event: 'bidError',
-        data: 'Ya hay una puja en proceso para este lote. Intenta nuevamente en un momento.'
-      });
-      return;
-    }
+    // 📥 COLA POR ORDEN DE LLEGADA (en vez de rechazar).
+    // Las pujas del mismo lote se procesan SECUENCIALMENTE en el orden exacto
+    // en que llegaron al servidor (el event loop preserva ese orden), encadenando
+    // cada una tras la anterior. Así "el primero en el tiempo" gana de verdad,
+    // sin pedirle al usuario que reintente. El advisory lock de la BD refuerza
+    // esta serialización a nivel de base de datos.
+    const previous = this.pendingBids.get(bidKey) ?? Promise.resolve();
+    const task = previous
+      .catch(() => {}) // un fallo previo no debe romper la cadena
+      .then(() => this.processAndBroadcastBid(createBidDto, client));
+
+    this.pendingBids.set(bidKey, task);
 
     try {
-      // Crear promesa para manejar la puja
-      const bidPromise = this.processBidWithRaceConditionProtection(createBidDto, client);
-      this.pendingBids.set(bidKey, bidPromise);
+      await task;
+    } finally {
+      // Liberar la entrada solo si esta tarea es la última de la cola
+      if (this.pendingBids.get(bidKey) === task) {
+        this.pendingBids.delete(bidKey);
+      }
+    }
+  }
 
-      const result = await bidPromise;
+  // Procesa UNA puja y difunde el resultado. Maneja sus propios errores hacia el
+  // cliente para que nunca rompa la cadena de la cola (siempre resuelve).
+  private async processAndBroadcastBid(createBidDto: CreateBidDto, client: Socket) {
+    try {
+      const result = await this.processBidWithRaceConditionProtection(createBidDto, client);
 
       // ✅ OBTENER DATOS ACTUALIZADOS (incluyendo el nuevo endDate si fue extendido)
       const updatedAuction = await this.bidsService.getAuction(createBidDto.auctionId);
@@ -238,7 +297,7 @@ private checkInactiveConnections() {
         auctionStatus: updatedAuction?.status
       });
 
-      // ✅ NUEVA LÓGICA: Verificar extensión inmediata después de cada puja
+      // ✅ Verificar extensión inmediata después de cada puja
       await this.checkAndExtendAuctionImmediately(createBidDto.auctionId);
 
     } catch (error) {
@@ -247,9 +306,6 @@ private checkInactiveConnections() {
         event: 'bidError',
         data: error.message || 'Error al procesar la puja'
       });
-    } finally {
-      // Limpiar la puja pendiente
-      this.pendingBids.delete(bidKey);
     }
   }
 

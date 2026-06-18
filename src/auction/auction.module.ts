@@ -6,7 +6,7 @@ import { CaffeeLotModule } from 'src/caffee-lot/caffee-lot.module';
 import { UsersModule } from 'src/users/users.module';
 import { BidModule } from 'src/bid/bid.module';
 import { AuctionClosureService } from './auction-closure.service';
-import { EmailService } from 'src/email/email.service';
+import { EmailModule } from 'src/email/email.module';
 import { AuctionTimerService } from './auction-timer.service';
 
 @Module({
@@ -14,19 +14,18 @@ import { AuctionTimerService } from './auction-timer.service';
     PrismaModule, 
     CaffeeLotModule, 
     UsersModule,
-    forwardRef(() => BidModule)
+    forwardRef(() => BidModule),
+    EmailModule,
   ],
   controllers: [AuctionsController],
   providers: [
     AuctionsService,
     AuctionClosureService,
-    EmailService,
     AuctionTimerService,
   ],
   exports: [
     AuctionsService,
     AuctionClosureService, 
-    EmailService,
     AuctionTimerService,
   ],
 })

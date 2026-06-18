@@ -9,6 +9,7 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { AuthService } from '../auth.service';
+import { jwtConstants } from '../constants';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -30,9 +31,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       return true;
     }
 
-    // Verificar si es una conexión WebSocket
-    if (context.getType() === 'ws') {
-      return this.handleWsConnection(context);
+    // El gateway de WebSockets (/bids) valida el JWT por su cuenta en
+    // handleConnection (token vía handshake.auth.token), por eso el guard global
+    // SOLO protege HTTP. Si lo aplicáramos a los mensajes WS rompería las pujas:
+    // este guard buscaría el token en el header Authorization del handshake, pero
+    // el front lo envía en handshake.auth.token.
+    if (context.getType() !== 'http') {
+      return true;
     }
 
     // Para HTTP, usar la lógica original
@@ -49,7 +54,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET,
+        secret: jwtConstants.secret,
       });
 
       const user = await this.authService.validateUserById(payload.sub);

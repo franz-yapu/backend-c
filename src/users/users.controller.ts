@@ -33,7 +33,11 @@ import { RolesEnum } from 'src/auth/roles.enum';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
   @Post()
- /*  @Roles(RolesEnum.ADMIN) // Usa el enum aquí */
+  // Crear usuarios con rol arbitrario (incl. ADMIN) es SOLO para admins. El
+  // guard global ya autentica; RolesGuard + @Roles añade la autorización.
+  @UseGuards(RolesGuard)
+  @Roles(RolesEnum.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear nuevo usuario (solo ADMIN)' })
   async create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.createUser(createUserDto);

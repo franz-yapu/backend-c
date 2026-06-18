@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { BidResponseDto } from './dto/bid-response.dto';
 import { BidsService } from './bid.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Bids')
 @Controller('bids')
@@ -103,6 +104,7 @@ export class BidsController {
   }
 
 
+  @Public() // Página pública /auction muestra la puja más alta por lote.
   @Get('highest/:auctionId/:coffeeLotId')
 @ApiOperation({ summary: 'Get highest bid for a specific coffee lot in an auction' })
 @ApiResponse({ 
@@ -129,6 +131,7 @@ findHighestBidForCoffeeLot(
   return this.bidsService.findHighestBidForCoffeeLot(auctionId, coffeeLotId);
 }
 
+@Public() // Página pública /auction muestra el historial de últimas pujas.
 @Get('last-bids/:auctionId/:coffeeLotId')
 @ApiOperation({ summary: 'Get last bids for a specific coffee lot' })
 @ApiResponse({ 

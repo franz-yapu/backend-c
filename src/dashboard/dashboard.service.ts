@@ -177,7 +177,7 @@ export class DashboardService {
 
     const totalRevenue = transactions
       .filter(t => t.status === 'COMPLETED')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + Number(t.amount), 0);
 
     return this.transformDataForResponse({
       totalTransactions: transactions.length,

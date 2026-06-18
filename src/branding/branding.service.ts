@@ -17,6 +17,8 @@ const DEFAULT_BRANDING = {
   themeMode: 'light',
   fontFamily: 'Inter',
   borderRadius: '4px',
+  institutionName: 'Cáritas Bolivia',
+  institutionShortName: 'Cáritas',
   isActive: true,
 };
 

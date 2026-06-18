@@ -189,16 +189,31 @@ export class AuctionClosureService {
 
   private async processCoffeeLot(tx: any, auctionId: string, detail: any) {
   this.logger.log(`🔍 Procesando lote ${detail.coffeeLotId} para subasta ${auctionId}`);
-  
-  // 1. Obtener puja ganadora
+
+  // 🔒 MISMO candado por lote que usa BidsService.createWithOptimisticLock
+  // (`hashtext(coffeeLotId)::int8`). Serializa el cierre frente a las pujas en
+  // vuelo del MISMO lote y elimina la carrera cierre-vs-puja:
+  //  - Si una puja tiene el candado primero: el cierre espera a su commit y la
+  //    cuenta (la puja entró antes de que el cierre se confirmara → es válida).
+  //  - Si el cierre lo tiene primero: la puja espera y, al re-leer el estado,
+  //    ve la subasta CLOSED y se rechaza.
+  // $executeRaw (no $queryRaw): pg_advisory_xact_lock devuelve `void`.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${detail.coffeeLotId})::int8)`;
+
+  // 1. Obtener puja ganadora.
+  // Desempate determinista: a igual monto gana el primero en el tiempo
+  // (createdAt asc) y, como último criterio estable, el menor id.
+  // DEBE coincidir con BidsService.isWinningBid.
   const winningBid = await tx.bid.findFirst({
     where: {
       auctionId,
       coffeeLotId: detail.coffeeLotId,
     },
-    orderBy: {
-      amount: 'desc',
-    },
+    orderBy: [
+      { amount: 'desc' },
+      { createdAt: 'asc' },
+      { id: 'asc' },
+    ],
     include: {
       user: true,
     },

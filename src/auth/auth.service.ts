@@ -8,6 +8,9 @@ import { User } from '@prisma/client';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { EmailService } from 'src/email/email.service';
 
+// Roles que un usuario puede auto-asignarse en el registro público.
+// NUNCA incluye ADMIN: un admin solo lo crea otro admin vía POST /users.
+export const SELF_REGISTRATION_ROLES = ['BUYER', 'SELLER', 'GUEST'];
 
 @Injectable()
 export class AuthService {
@@ -74,6 +77,18 @@ export class AuthService {
   }
 
   async register(createUserDto: CreateUserDto) {
+    // Anti escalada de privilegios: el rol del registro público NO puede ser
+    // ADMIN. Si piden ADMIN se rechaza; cualquier otro valor fuera de la lista
+    // permitida (o vacío) cae a 'BUYER'.
+    const requested = (createUserDto.roleName || '').trim().toUpperCase();
+    if (requested === 'ADMIN') {
+      throw new ForbiddenException('No puedes registrarte con el rol ADMIN');
+    }
+    const roleName = SELF_REGISTRATION_ROLES.includes(requested)
+      ? requested
+      : 'BUYER';
+    createUserDto = { ...createUserDto, roleName };
+
     // Verificar si el usuario ya existe
     const existingUser = await this.prisma.user.findUnique({
       where: { email: createUserDto.email },
@@ -140,6 +155,18 @@ export class AuthService {
   async validateUserById(userId: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { id: userId },
+    });
+  }
+
+  /**
+   * Roles disponibles para el dropdown público de registro. Excluye ADMIN (y
+   * cualquier rol no auto-asignable) para que ni siquiera se pueda elegir.
+   */
+  async getRoles() {
+    return this.prisma.role.findMany({
+      where: { name: { in: SELF_REGISTRATION_ROLES } },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
     });
   }
 

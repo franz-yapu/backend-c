@@ -21,7 +21,10 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/package.json ./package.json
-COPY .env ./
+
+# El .env NO se hornea en la imagen: las variables (JWT_SECRET, DATABASE_URL,
+# credenciales de correo, etc.) se inyectan en runtime con `--env-file .env`
+# o `environment:` en docker-compose. Así los secretos no quedan en las capas.
 
 EXPOSE 3000
 

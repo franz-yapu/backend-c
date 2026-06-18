@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductModule } from './product/product.module';
@@ -23,6 +25,7 @@ import { UserLogsModule } from './user-logs/user-logs.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { TimeController } from './common/time.controller';
 import { BrandingModule } from './branding/branding.module';
+import { TranslationModule } from './translation/translation.module';
 
 
 
@@ -52,8 +55,14 @@ import { BrandingModule } from './branding/branding.module';
     UserLogsModule,
     DashboardModule,
     BrandingModule,
+    TranslationModule,
   ],
   controllers: [AppController,TimeController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Guard global: TODA la API REST exige JWT salvo los endpoints marcados con
+    // @Public(). El gateway WS (/bids) se autovalida aparte (ver JwtAuthGuard).
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+  ],
 })
 export class AppModule { }

@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   UseInterceptors,
+  UseGuards,
   UploadedFile,
   Request,
   ParseUUIDPipe,
@@ -19,6 +20,11 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { BrandingService } from './branding.service';
 import { CreateBrandingDto, UpdateBrandingDto } from './dto/branding.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Public } from '../auth/decorators/public.decorator';
+import { RolesEnum } from '../auth/roles.enum';
 import {
   ApiTags,
   ApiOperation,
@@ -33,6 +39,11 @@ const ALLOWED_LOGO_TYPES = /\.(jpg|jpeg|png|svg|ico|webp)$/i;
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 @ApiTags('Branding')
+// Todo el controlador exige sesión válida y rol ADMIN, EXCEPTO la lectura
+// pública de la config (marcada con @Public). Así un usuario no-admin no puede
+// cambiar colores/logos/textos y dejar la plataforma inservible.
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RolesEnum.ADMIN)
 @Controller({ path: 'branding', version: '1' })
 export class BrandingController {
   constructor(private readonly brandingService: BrandingService) {}
@@ -40,6 +51,7 @@ export class BrandingController {
   // ─── PÚBLICO ────────────────────────────────────────────────────────────────
 
   @Get('config')
+  @Public()
   @ApiOperation({ summary: 'Obtener configuración de branding activa (público)' })
   @ApiResponse({ status: 200, description: 'Configuración de branding activa' })
   getActiveConfig() {
@@ -67,7 +79,7 @@ export class BrandingController {
   @ApiOperation({ summary: 'Crear nueva configuración de branding (Admin)' })
   @ApiResponse({ status: 201, description: 'Configuración creada' })
   create(@Body() dto: CreateBrandingDto, @Request() req: any) {
-    const adminId = req.user?.sub ?? 'system';
+    const adminId = req.user?.userId ?? 'system';
     return this.brandingService.create(dto, adminId);
   }
 
@@ -79,7 +91,7 @@ export class BrandingController {
     @Body() dto: UpdateBrandingDto,
     @Request() req: any,
   ) {
-    const adminId = req.user?.sub ?? 'system';
+    const adminId = req.user?.userId ?? 'system';
     return this.brandingService.update(id, dto, adminId);
   }
 
@@ -87,7 +99,7 @@ export class BrandingController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Activar una configuración de branding (Admin)' })
   activate(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
-    const adminId = req.user?.sub ?? 'system';
+    const adminId = req.user?.userId ?? 'system';
     return this.brandingService.activate(id, adminId);
   }
 
@@ -103,7 +115,7 @@ export class BrandingController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Reset a valores por defecto (Admin)' })
   reset(@Request() req: any) {
-    const adminId = req.user?.sub ?? 'system';
+    const adminId = req.user?.userId ?? 'system';
     return this.brandingService.resetToDefault(adminId);
   }
 

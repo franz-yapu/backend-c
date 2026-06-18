@@ -188,7 +188,7 @@ async findAuctionSales(auctionId: string) {
     );
 
     const pricePerLb =
-      tx.amount && lot.quantityLbs ? tx.amount / lot.quantityLbs : null;
+      tx.amount && lot.quantityLbs ? Number(tx.amount) / lot.quantityLbs : null;
 
     return {
       transactionId: tx.id,
@@ -263,7 +263,7 @@ async findBuyerWins(buyerId: string) {
     );
 
     const pricePerLb =
-      tx.amount && lot.quantityLbs ? tx.amount / lot.quantityLbs : null;
+      tx.amount && lot.quantityLbs ? Number(tx.amount) / lot.quantityLbs : null;
 
     return {
       transactionId: tx.id,

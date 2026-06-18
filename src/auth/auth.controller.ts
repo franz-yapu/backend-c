@@ -4,6 +4,7 @@ import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { Public } from './decorators/public.decorator';
 
 
 @ApiTags('auth')
@@ -13,6 +14,7 @@ export class AuthController {
   prisma: any;
   constructor(private authService: AuthService) {}
 
+@Public()
 @Post('login')
 @ApiOperation({ summary: 'Iniciar sesión' })
 @ApiBody({ type: LoginDto })
@@ -25,6 +27,7 @@ async login(@Body() body: LoginDto) {
   }
 }
 
+  @Public()
   @Post('register')
   @ApiOperation({ summary: 'Registrar nuevo usuario' })
   @ApiBody({ type: CreateUserDto })
@@ -50,9 +53,19 @@ async login(@Body() body: LoginDto) {
   }
 
   
+@Public()
 @Post('confirm')
 async confirmAccount(@Body() body: { token: string }) {
-  return this.authService.confirmAccount(body.token); 
+  return this.authService.confirmAccount(body.token);
 }
+
+  // Endpoint público dedicado para el dropdown de roles del registro. Sustituye
+  // al antiguo GET /dynamic/role (el CRUD genérico ya NO es público).
+  @Public()
+  @Get('roles')
+  @ApiOperation({ summary: 'Listar roles disponibles (público, para registro)' })
+  async getRoles() {
+    return this.authService.getRoles();
+  }
 
 }

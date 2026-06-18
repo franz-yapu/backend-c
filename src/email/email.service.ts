@@ -3,12 +3,15 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { google } from 'googleapis';
 import * as nodemailer from 'nodemailer';
 import { EmailOptions, EmailResponse } from './interfaces/email.interface';
+import { BrandingService } from '../branding/branding.service';
 
 @Injectable()
 export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
   private transporter: any;
   private oauth2Client: any;
+
+  constructor(private readonly brandingService: BrandingService) {}
 
   async onModuleInit() {
     await this.initializeTransporter();
@@ -126,6 +129,10 @@ export class EmailService implements OnModuleInit {
 
   async sendWelcomeEmail(data: any, token: string): Promise<EmailResponse> {
     const to = data.email;
+    const branding = await this.brandingService.getActiveConfig();
+    const institutionName = branding.institutionName || 'Cáritas Bolivia';
+    const institutionShortName = branding.institutionShortName || 'Cáritas';
+    const primaryColor = branding.primaryColor || '#8B4513';
     const html = `
       <!DOCTYPE html>
       <html>
@@ -134,19 +141,19 @@ export class EmailService implements OnModuleInit {
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #8B4513; color: white; padding: 20px; text-align: center; }
+          .header { background: ${primaryColor}; color: white; padding: 20px; text-align: center; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1> Cáritas</h1>
+            <h1>${institutionName}</h1>
           </div>
           <div class="content">
             <h2>¡Bienvenido, ${data.firstName} ${data.lastName}!</h2>
-            <p>Gracias por registrarte en Cáritas.</p>
+            <p>Gracias por registrarte en ${institutionShortName}.</p>
             <p>Estamos emocionados de tenerte en nuestra comunidad cafetalera.</p>
-            <p>Saludos,<br>El equipo de Cáritas</p>
+            <p>Saludos,<br>El equipo de ${institutionShortName}</p>
             token: ${token}
           </div>
         </div>
@@ -156,14 +163,17 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: `¡Bienvenido a Cáritas, ${data.firstName,'',  data.lastName}!`,
+      subject: `¡Bienvenido a ${institutionShortName}, ${data.firstName} ${data.lastName}!`,
       html,
     });
   }
 
   async sendPasswordResetEmail(to: string, resetToken: string, name: string): Promise<EmailResponse> {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-    
+    const branding = await this.brandingService.getActiveConfig();
+    const institutionShortName = branding.institutionShortName || 'Cáritas';
+    const primaryColor = branding.primaryColor || '#D2691E';
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -171,7 +181,7 @@ export class EmailService implements OnModuleInit {
         <meta charset="utf-8">
         <style>
           body { font-family: Arial, sans-serif; }
-          .button { background: #D2691E; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; }
+          .button { background: ${primaryColor}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; }
         </style>
       </head>
       <body>
@@ -187,21 +197,20 @@ export class EmailService implements OnModuleInit {
 
     return this.sendEmail({
       to,
-      subject: 'Restablece tu contraseña - Cáritas',
+      subject: `Restablece tu contraseña - ${institutionShortName}`,
       html,
     });
   }
-
- 
-
-
-
 
 async sendVerificationEmail(data: any, token: string): Promise<EmailResponse> {
   const to = data.email;
   const fullName = `${data.firstName} ${data.lastName}`.trim();
   const loginUrl = `${process.env.ENV_FROM_ADDRESS}/login?token=${token}`;
-  
+  const branding = await this.brandingService.getActiveConfig();
+  const institutionName = branding.institutionName || 'Cáritas Bolivia';
+  const institutionShortName = branding.institutionShortName || 'Cáritas';
+  const primaryColor = branding.primaryColor || '#9e2a2a';
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -306,16 +315,16 @@ async sendVerificationEmail(data: any, token: string): Promise<EmailResponse> {
       <div class="container">
         <!-- Header -->
         <div class="header">
-          <h1 style="margin: 0; font-size: 24px;">Cáritas Bolivia</h1>
+          <h1 style="margin: 0; font-size: 24px;">${institutionName}</h1>
           <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Donde cada taza cuenta una historia</p>
         </div>
         
         <!-- Content -->
         <div class="content">
-          <h2 class="title">¡Bienvenido a Cáritas, ${fullName}!</h2>
+          <h2 class="title">¡Bienvenido a ${institutionShortName}, ${fullName}!</h2>
           
           <div class="message">
-            <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <strong style="color: #9e2a2a;">Cáritas</strong>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
+            <p>Nos complace enormemente darle la bienvenida a nuestra exclusiva comunidad de amantes del café. En <strong style="color: ${primaryColor};">${institutionShortName}</strong>, nos dedicamos a ofrecer las mejores experiencias cafetaleras.</p>
           </div>
           
           <div class="message">
@@ -379,13 +388,13 @@ async sendVerificationEmail(data: any, token: string): Promise<EmailResponse> {
           
           <div style="margin-top: 30px; text-align: center;">
             <p style="margin: 0 0 5px 0;">Atentamente,</p>
-            <p style="margin: 0; font-weight: bold; color: #9e2a2a;">El equipo de Cáritas</p>
+            <p style="margin: 0; font-weight: bold; color: ${primaryColor};">El equipo de ${institutionShortName}</p>
           </div>
         </div>
         
         <!-- Footer -->
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} Cáritas Bolivia. Todos los derechos reservados.</p>
+          <p>&copy; ${new Date().getFullYear()} ${institutionName}. Todos los derechos reservados.</p>
           <p>Este es un mensaje automático, por favor no responda a este correo.</p>
           <div style="margin-top: 10px; font-size: 12px; color: #888888;">
             Por su seguridad, este enlace expirará en 24 horas.
@@ -398,7 +407,7 @@ async sendVerificationEmail(data: any, token: string): Promise<EmailResponse> {
 
   return this.sendEmail({
     to,
-    subject: `¡Bienvenido a Cáritas, ${fullName}! Complete su registro`,
+    subject: `¡Bienvenido a ${institutionShortName}, ${fullName}! Complete su registro`,
     html,
   });
 }
@@ -413,6 +422,10 @@ async sendAuctionWinNotification(
 ): Promise<EmailResponse> {
   const to = buyerEmail;
   const subject = `¡Felicidades! Has ganado la subasta - ${coffeeLot.name}`;
+  const branding = await this.brandingService.getActiveConfig();
+  const institutionName = branding.institutionName || 'Cáritas Bolivia';
+  const institutionShortName = branding.institutionShortName || 'Cáritas';
+  const primaryColor = branding.primaryColor || '#9e2a2a';
   
   // Calcular valores
   const totalValue = winningBid.amount * (coffeeLot.quantityLbs || coffeeLot.quantity || 0);
@@ -578,7 +591,7 @@ async sendAuctionWinNotification(
       <div class="container">
         <!-- Header -->
         <div class="header">
-          <h1 style="margin: 0; font-size: 28px;">Cáritas Bolivia</h1>
+          <h1 style="margin: 0; font-size: 28px;">${institutionName}</h1>
           <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Subastas de Café de Especialidad</p>
         </div>
         
@@ -675,13 +688,13 @@ async sendAuctionWinNotification(
           </div>
           
           <div class="message" style="text-align: center;">
-            <p>Gracias por confiar en <strong style="color: #9e2a2a;">Cáritas</strong> para adquirir cafés de especialidad.</p>
+            <p>Gracias por confiar en <strong style="color: ${primaryColor};">${institutionShortName}</strong> para adquirir cafés de especialidad.</p>
           </div>
         </div>
         
         <!-- Footer -->
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} Cáritas Bolivia. Todos los derechos reservados.</p>
+          <p>&copy; ${new Date().getFullYear()} ${institutionName}. Todos los derechos reservados.</p>
           <p>Este es un mensaje automático, por favor no responda a este correo.</p>
           <p style="margin-top: 10px; font-size: 12px; color: #888888;">
             Calidad • Transparencia • Tradición

@@ -1,0 +1,22 @@
+# Secretos: nunca dentro de la imagen (se inyectan en runtime)
+.env
+.env.*
+!.env.example
+
+# Dependencias y artefactos (se reinstalan/recompilan en el build)
+node_modules
+dist
+out
+
+# Git y metadatos
+.git
+.gitignore
+.dockerignore
+Dockerfile*
+
+# Pruebas y tooling
+test
+coverage
+*.log
+.vscode
+.idea
