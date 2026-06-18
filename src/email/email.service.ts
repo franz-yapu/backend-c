@@ -14,7 +14,17 @@ export class EmailService implements OnModuleInit {
   constructor(private readonly brandingService: BrandingService) {}
 
   async onModuleInit() {
-    await this.initializeTransporter();
+    // El arranque de la API NO debe depender del correo. Si la verificación SMTP
+    // falla (credenciales ausentes/erróneas, servidor caído), se registra y se
+    // continúa: los envíos individuales ya fallan de forma controlada en sendEmail.
+    try {
+      await this.initializeTransporter();
+    } catch (error: any) {
+      this.logger.error(
+        '❌ No se pudo inicializar el correo; la API arranca igual:',
+        error?.message || error,
+      );
+    }
   }
 
   private initializeOAuth2() {
@@ -74,7 +84,8 @@ export class EmailService implements OnModuleInit {
       this.logger.log('✅ Simple SMTP transporter initialized successfully');
     } catch (error) {
       this.logger.error('❌ Simple SMTP also failed:', error);
-      throw error;
+      // No relanzar: sin transporter los envíos fallarán de forma controlada,
+      // pero la API debe seguir arrancando aunque el correo no esté disponible.
     }
   }
 

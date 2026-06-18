@@ -12,7 +12,11 @@ const prefixOptions: GlobalPrefixOptions = {
 };
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  // Sirve los archivos subidos desde <cwd>/uploads, que es DONDE los guarda multer
+  // (`destination: './uploads'`) y de donde los lee DmsController. Usar __dirname
+  // resolvía a dist/uploads (carpeta vacía) → /uploads/* daba 404, sobre todo en
+  // el contenedor donde main.js corre en dist/src.
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
 
