@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'usuario@ejemplo.com' })
@@ -10,6 +10,7 @@ export class CreateUserDto {
   @ApiProperty({ example: 'password123' })
   @IsString()
   @IsNotEmpty()
+  @MinLength(6) // Coherente con el cambio de contraseña (newPassword también exige 6).
   password: string;
 
 

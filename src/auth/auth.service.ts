@@ -97,21 +97,27 @@ export class AuthService {
       throw new ConflictException('El correo ya está registrado');
     }
 
-    // Crear usuario y enviar correos
+    // Crear usuario. Los errores de createUser (p. ej. email duplicado →
+    // ConflictException 409) propagan tal cual, NO se convierten en 500.
+    const user = await this.usersService.createUser(createUserDto);
+    const token = this.jwtService.sign({ email: user.email }, { expiresIn: '48h' });
+
+    // El correo de verificación es BEST-EFFORT: si el SMTP falla, el registro
+    // NO debe fallar (el usuario puede pedir reenvío). Antes un fallo de correo
+    // tiraba un 500 y rompía el registro.
     try {
-      const user = await this.usersService.createUser(createUserDto);
-      const token = this.jwtService.sign({ email: user.email }, { expiresIn: '48h' });
-
       await this.emailService.sendVerificationEmail(user, token);
-
-      return {
-        access_token: this.jwtService.sign({ sub: user.id, email: user.email }),
-        message: 'Revisa tu correo para confirmar la cuenta',
-        user: user
-      };
-    } catch (error) {
-      throw new InternalServerErrorException('Error al registrar usuario');
+    } catch (e: any) {
+      console.error('No se pudo enviar el correo de verificación:', e?.message || e);
     }
+
+    // NO se devuelve token de sesión: el usuario debe verificar su correo y
+    // luego iniciar sesión (login exige isVerified). Antes se devolvía un
+    // access_token que permitía actuar sin verificar el email.
+    return {
+      message: 'Revisa tu correo para confirmar la cuenta',
+      user: user,
+    };
   }
 
   async changePassword(changePasswordDto: ChangePasswordDto) {

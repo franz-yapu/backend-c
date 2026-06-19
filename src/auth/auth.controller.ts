@@ -1,6 +1,6 @@
-import { Controller, Post, Body, Query, Get, UnauthorizedException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import { Controller, Post, Body, Query, Get, Request, UnauthorizedException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -44,11 +44,18 @@ async login(@Body() body: LoginDto) {
   }
 
   @Post('change-password')
-  @ApiOperation({ summary: 'Cambiar contraseña del usuario' })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cambiar contraseña del usuario autenticado' })
   @ApiBody({ type: ChangePasswordDto })
   @ApiResponse({ status: 200, description: 'Contraseña actualizada' })
   @ApiResponse({ status: 401, description: 'Contraseña actual incorrecta' })
-  async changePassword(@Body() changePasswordDto: ChangePasswordDto): Promise<{ message: string; }> {
+  async changePassword(
+    @Body() changePasswordDto: ChangePasswordDto,
+    @Request() req: any,
+  ): Promise<{ message: string }> {
+    // El userId SIEMPRE del JWT, nunca del body: un usuario solo puede cambiar
+    // SU propia contraseña (aunque ya estaba mitigado por exigir currentPassword).
+    changePasswordDto.userId = req.user.userId;
     return this.authService.changePassword(changePasswordDto);
   }
 
