@@ -96,6 +96,38 @@ export class UsersService {
     });
   }
 
+  // Edición de perfil por el PROPIO usuario (PATCH /users/me). Solo campos no
+  // sensibles: email/rol/password se gestionan por otras vías. Se ignoran las
+  // claves undefined para permitir actualizaciones parciales.
+  async updateProfile(id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    companyName?: string;
+    phone?: string;
+    city?: string;
+    country?: string;
+    address?: string;
+  }) {
+    const updateData: Record<string, string> = {};
+    for (const key of [
+      'firstName',
+      'lastName',
+      'companyName',
+      'phone',
+      'city',
+      'country',
+      'address',
+    ] as const) {
+      if (data[key] !== undefined) updateData[key] = data[key] as string;
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: updateData,
+      include: { role: true },
+    });
+  }
+
   async deleteUser(id: string) { // Ahora recibe string
     return this.prisma.user.delete({
       where: { id },

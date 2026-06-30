@@ -98,28 +98,38 @@ export class BrandingService {
 
   /** PUT /branding/config/:id — actualiza y registra historial */
   async update(id: string, dto: UpdateBrandingDto, adminId: string) {
-    const current = await this.findById(id);
+    // NO exigir que la fila exista: la primera vez que un admin guarda branding
+    // en una BD nueva, la fila singleton aún no está creada (no se siembra). Antes
+    // findById lanzaba 404 y rompía el guardado inicial. Leemos el estado actual
+    // sin lanzar; el upsert de abajo crea la fila si hace falta.
+    const current = await this.prisma.branding.findUnique({
+      where: { id: this.ACTIVE_ID },
+    });
 
-    const { id: dtoId, ...data } = dto as any; 
-    
+    const { id: dtoId, ...data } = dto as any;
+
     const updated = await this.prisma.$transaction(async (tx) => {
-      // Guardar historial de cambios (antes / después)
-      await tx.brandHistory.create({
-        data: {
-          brandingId: id,
-          changedBy: adminId,
-          changes: {
-            before: {
-              primaryColor: current.primaryColor,
-              secondaryColor: current.secondaryColor,
-              themeMode: current.themeMode,
-              fontFamily: current.fontFamily,
-              borderRadius: current.borderRadius,
-            },
-            after: dto as any,
-          } as any,
-        },
-      });
+      // El historial solo se registra si YA existía una config: brandHistory
+      // tiene FK a branding.id, así que no se puede insertar antes de crear la
+      // fila (en el primer guardado simplemente no hay "antes" que historiar).
+      if (current) {
+        await tx.brandHistory.create({
+          data: {
+            brandingId: this.ACTIVE_ID,
+            changedBy: adminId,
+            changes: {
+              before: {
+                primaryColor: current.primaryColor,
+                secondaryColor: current.secondaryColor,
+                themeMode: current.themeMode,
+                fontFamily: current.fontFamily,
+                borderRadius: current.borderRadius,
+              },
+              after: dto as any,
+            } as any,
+          },
+        });
+      }
 
       return tx.branding.upsert({
         where: { id: this.ACTIVE_ID },
@@ -179,9 +189,14 @@ export class BrandingService {
       favicon: 'faviconUrl',
       email: 'emailLogoUrl',
     };
-    return this.prisma.branding.update({
-      where: { id },
-      data: { [fieldMap[type]]: url },
+    const field = fieldMap[type];
+    // upsert (no update): si la fila singleton aún no existe (BD nueva donde el
+    // admin sube el logo antes de guardar colores), la creamos con los valores
+    // por defecto + la URL del logo, en vez de fallar con "record not found".
+    return this.prisma.branding.upsert({
+      where: { id: this.ACTIVE_ID },
+      update: { [field]: url },
+      create: { ...DEFAULT_BRANDING, id: this.ACTIVE_ID, isActive: true, [field]: url },
     });
   }
 

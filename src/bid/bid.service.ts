@@ -253,13 +253,19 @@ export class BidsService {
       // $queryRaw fallaría al intentar deserializar esa columna.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${createBidDto.coffeeLotId})::int8)`;
 
-      // 0. Validar que la subasta siga activa y no haya pasado su fecha de fin
+      // 0. Validar que la subasta siga activa y dentro de su ventana de tiempo
       const auction = await tx.auction.findUnique({
         where: { id: createBidDto.auctionId },
-        select: { status: true, endDate: true, minIncrement: true }
+        select: { status: true, startDate: true, endDate: true, minIncrement: true }
       });
       if (!auction || auction.status !== 'ACTIVE') {
         throw new Error('La subasta no está activa');
+      }
+      // No permitir pujar antes de la fecha de inicio: una subasta puede estar
+      // marcada ACTIVE pero con startDate futuro (programada). Sin esto, un
+      // cliente podía pujar antes de que la subasta comenzara realmente.
+      if (new Date() < new Date(auction.startDate)) {
+        throw new Error('La subasta aún no ha comenzado');
       }
       if (new Date() > new Date(auction.endDate)) {
         throw new Error('El tiempo de la subasta ha finalizado');

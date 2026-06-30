@@ -111,23 +111,35 @@ export class AuthService {
 
     // Crear usuario. Los errores de createUser (p. ej. email duplicado →
     // ConflictException 409) propagan tal cual, NO se convierten en 500.
-    const user = await this.usersService.createUser(createUserDto);
-    const token = this.jwtService.sign({ email: user.email }, { expiresIn: '48h' });
+    const created = await this.usersService.createUser(createUserDto);
 
-    // El correo de verificación es BEST-EFFORT: si el SMTP falla, el registro
-    // NO debe fallar (el usuario puede pedir reenvío). Antes un fallo de correo
-    // tiraba un 500 y rompía el registro.
+    // Auto-verificación del registro público: el comprador queda verificado al
+    // instante y puede iniciar sesión sin confirmar el correo. Se decidió así
+    // porque el flujo por email era frágil (dependía del front web, del cert TLS
+    // y del SMTP) y dejaba a compradores sin poder entrar. Si en el futuro se
+    // quiere reactivar la confirmación por correo, restaurar isVerified:false +
+    // sendVerificationEmail (ver confirmAccount()).
+    const user = await this.prisma.user.update({
+      where: { id: created.id },
+      data: { isVerified: true },
+      include: { role: true },
+    });
+
+    // Correo de bienvenida BEST-EFFORT: si el SMTP falla, el registro NO debe
+    // fallar (la cuenta ya quedó utilizable).
     try {
-      await this.emailService.sendVerificationEmail(user, token);
+      await this.emailService.sendWelcomeEmail(
+        user,
+        this.jwtService.sign({ email: user.email }, { expiresIn: '48h' }),
+      );
     } catch (e: any) {
-      console.error('No se pudo enviar el correo de verificación:', e?.message || e);
+      console.error('No se pudo enviar el correo de bienvenida:', e?.message || e);
     }
 
-    // NO se devuelve token de sesión: el usuario debe verificar su correo y
-    // luego iniciar sesión (login exige isVerified). Antes se devolvía un
-    // access_token que permitía actuar sin verificar el email.
+    // NO se devuelve token de sesión: el usuario inicia sesión normalmente con
+    // sus credenciales (ya verificado).
     return {
-      message: 'Revisa tu correo para confirmar la cuenta',
+      message: 'Cuenta creada. Ya puedes iniciar sesión.',
       user: user,
     };
   }

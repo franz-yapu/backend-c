@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Delete,
@@ -24,6 +25,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { Role } from '@prisma/client';
 import { RolesEnum } from 'src/auth/roles.enum';
 
@@ -50,6 +52,15 @@ export class UsersController {
   @ApiOperation({ summary: 'Perfil del usuario autenticado' })
   async me(@Request() req: any) {
     return this.usersService.findById(req.user.userId);
+  }
+
+  // Edición del perfil propio: el id sale del JWT, NUNCA del cliente. No permite
+  // cambiar email, rol ni contraseña (esos tienen sus propias vías).
+  @Patch('me')
+  @ApiOperation({ summary: 'Actualizar el perfil del usuario autenticado' })
+  @ApiBody({ type: UpdateProfileDto })
+  async updateMe(@Request() req: any, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.userId, dto);
   }
 
   @Get()
