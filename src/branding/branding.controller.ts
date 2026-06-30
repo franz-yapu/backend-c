@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -17,6 +18,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { unlink } from 'fs/promises';
 import { extname, join } from 'path';
 import { BrandingService } from './branding.service';
 import { CreateBrandingDto, UpdateBrandingDto } from './dto/branding.dto';
@@ -37,6 +39,7 @@ import {
 // Tipos de archivo permitidos para logos
 const ALLOWED_LOGO_TYPES = /\.(jpg|jpeg|png|svg|ico|webp)$/i;
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const LOGO_DESTINATIONS = ['main', 'favicon', 'email'] as const;
 
 @ApiTags('Branding')
 // Todo el controlador exige sesión válida y rol ADMIN, EXCEPTO la lectura
@@ -162,6 +165,20 @@ export class BrandingController {
     @UploadedFile() file: Express.Multer.File,
     @Body('type') type: 'main' | 'favicon' | 'email',
   ) {
+    if (!file) {
+      throw new BadRequestException('No se recibió ningún archivo');
+    }
+
+    // Validar `type` ANTES de tocar la BD. Sin esto, un type inválido hacía que
+    // el service escribiera `{ [undefined]: url }` → Prisma 500, y además dejaba
+    // el archivo que multer ya guardó como huérfano en disco.
+    if (!LOGO_DESTINATIONS.includes(type as any)) {
+      await unlink(file.path).catch(() => undefined);
+      throw new BadRequestException(
+        "El campo 'type' debe ser uno de: main, favicon, email",
+      );
+    }
+
     const url = `/uploads/branding/${file.filename}`;
     return this.brandingService.updateLogoUrl(id, type, url);
   }

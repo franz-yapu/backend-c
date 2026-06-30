@@ -399,28 +399,40 @@ export class BuyerDashboardService {
         dateFilter.lte = new Date();
       }
 
-      const result = await this.prisma.bid.groupBy({
-        by: ['createdAt'],
+      // OJO: groupBy(['createdAt']) agrupaba por el TIMESTAMP exacto (precisión de
+      // milisegundos), así que cada puja caía en su propio grupo → el gráfico
+      // mostraba bid_count=1 con fechas repetidas en el eje X. Hay que agrupar por
+      // DÍA. Se trae el detalle y se acumula en JS (mismo patrón que getPriceEvolution).
+      const bids = await this.prisma.bid.findMany({
         where: {
           userId,
           createdAt: dateFilter,
         },
-        _count: {
-          id: true,
-        },
-        _avg: {
+        select: {
           amount: true,
+          createdAt: true,
         },
         orderBy: {
           createdAt: 'asc',
         },
       });
 
-      return result.map(item => ({
-        date: item.createdAt.toISOString().split('T')[0],
-        bid_count: item._count.id,
-        average_bid: item._avg.amount,
-      }));
+      const byDay = new Map<string, { count: number; sum: number }>();
+      for (const bid of bids) {
+        const day = bid.createdAt.toISOString().split('T')[0];
+        const bucket = byDay.get(day) || { count: 0, sum: 0 };
+        bucket.count += 1;
+        bucket.sum += Number(bid.amount);
+        byDay.set(day, bucket);
+      }
+
+      return Array.from(byDay.entries())
+        .map(([date, { count, sum }]) => ({
+          date,
+          bid_count: count,
+          average_bid: count > 0 ? sum / count : 0,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
     } catch (error) {
       console.error('Error en getBidEvolution:', error);
       return [];

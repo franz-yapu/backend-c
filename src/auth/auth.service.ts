@@ -1,4 +1,5 @@
-import { ConflictException, ForbiddenException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
@@ -41,6 +42,17 @@ export class AuthService {
       success: false,
       message: 'Credenciales incorrectas',
       code: 'INVALID_CREDENTIALS'
+    });
+  }
+
+  // Si la cuenta fue desactivada por un administrador, bloquear el acceso
+  // (independiente de la verificación de email).
+  if (!user.isActive) {
+    throw new ForbiddenException({
+      success: false,
+      message: 'Cuenta desactivada. Contacta con el administrador.',
+      code: 'ACCOUNT_DISABLED',
+      email: user.email
     });
   }
 
@@ -134,14 +146,63 @@ export class AuthService {
       throw new UnauthorizedException('Contraseña actual incorrecta');
     }
 
-    // 2. Hashear nueva contraseña y actualizar
+    // 2. Hashear nueva contraseña y actualizar. passwordChangedAt invalida los
+    //    tokens emitidos antes de este instante (ver JwtStrategy.validate).
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await this.prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword },
+      data: { password: hashedPassword, passwordChangedAt: new Date() },
     });
 
     return { message: 'Contraseña actualizada correctamente' };
+  }
+
+  /**
+   * Restablecimiento de contraseña por un ADMINISTRADOR. El sistema genera una
+   * contraseña aleatoria (el admin NO la elige ni la conoce), la guarda hasheada
+   * e invalida las sesiones previas (passwordChangedAt). La nueva contraseña se
+   * envía al usuario por email. La autorización ADMIN se exige en el controller.
+   */
+  async adminResetPassword(targetUserId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    const newPassword = this.generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // El email se envía ANTES de tocar la contraseña: si el envío falla, no se
+    // cambia nada y el usuario conserva su contraseña actual (evita dejarlo sin
+    // acceso ni forma de conocer la nueva). sendEmail NO lanza: devuelve
+    // { success } y aquí se comprueba explícitamente.
+    const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
+    const emailResult = await this.emailService.sendNewPasswordEmail(user.email, newPassword, fullName);
+    if (!emailResult?.success) {
+      throw new InternalServerErrorException(
+        'No se pudo enviar el correo con la nueva contraseña; la contraseña no fue modificada.',
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { password: hashedPassword, passwordChangedAt: new Date() },
+    });
+
+    return { message: 'Se envió la nueva contraseña al correo del usuario' };
+  }
+
+  // Contraseña aleatoria legible (sin caracteres ambiguos) usando CSPRNG.
+  private generateRandomPassword(length = 12): string {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    const bytes = randomBytes(length);
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += alphabet[bytes[i] % alphabet.length];
+    }
+    return password;
   }
 
 

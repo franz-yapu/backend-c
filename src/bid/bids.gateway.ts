@@ -14,10 +14,20 @@ import { CreateBidDto } from './dto/create-bid.dto';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { jwtConstants } from '../auth/constants';
+import { PushService } from '../notifications/push.service';
+
+// Mismos orígenes que el CORS REST de main.ts (ALLOWED_ORIGINS del .env). Antes
+// era origin:'*' (cualquier web podía abrir el socket). El gateway ya autentica
+// por JWT en handleConnection, así que esto es defensa en profundidad para alinear
+// el WS con el REST. Las env se inyectan en runtime (compose/--env-file); el
+// decorador se evalúa al cargar el módulo, cuando process.env ya está disponible.
+const wsAllowedOrigins = (
+  process.env.ALLOWED_ORIGINS || 'http://localhost:4200'
+).split(',');
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: wsAllowedOrigins,
   },
   namespace: '/bids',
 })
@@ -79,6 +89,7 @@ export class BidsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly bidsService: BidsService,
     private readonly auctionClosureService: AuctionClosureService,
     private readonly jwtService: JwtService,
+    private readonly pushService: PushService,
   ) {
     // Inicializar después de un breve delay para asegurar que el servidor esté listo
     setTimeout(() => {
@@ -267,6 +278,15 @@ private checkInactiveConnections() {
   // cliente para que nunca rompa la cadena de la cola (siempre resuelve).
   private async processAndBroadcastBid(createBidDto: CreateBidDto, client: Socket) {
     try {
+      // Capturamos al mejor postor ANTES de procesar la nueva puja: si resulta
+      // superado por otro usuario, le mandamos el push "te superaron la puja".
+      // (Estamos dentro de la cola serializada por lote, así que esta lectura es
+      // consistente con la puja que estamos a punto de insertar.)
+      const previousTopBidder = await this.bidsService.findHighestBidForCoffeeLot(
+        createBidDto.auctionId,
+        createBidDto.coffeeLotId,
+      );
+
       const result = await this.processBidWithRaceConditionProtection(createBidDto, client);
 
       // ✅ OBTENER DATOS ACTUALIZADOS (incluyendo el nuevo endDate si fue extendido)
@@ -296,6 +316,22 @@ private checkInactiveConnections() {
         auctionEndDate: updatedAuction?.endDate,
         auctionStatus: updatedAuction?.status
       });
+
+      // 🔔 Push "te superaron": solo si la nueva puja es la ganadora y el postor
+      // anterior es OTRO usuario (no avisamos a quien sube su propia puja).
+      // Fire-and-forget: no debe añadir latencia a la ruta crítica de pujas.
+      if (
+        result.isWinningBid &&
+        previousTopBidder &&
+        previousTopBidder.userId !== createBidDto.userId
+      ) {
+        void this.notifyOutbid(
+          previousTopBidder.userId,
+          createBidDto.auctionId,
+          createBidDto.coffeeLotId,
+          result.currentPrice,
+        );
+      }
 
       // ✅ Verificar extensión inmediata después de cada puja
       await this.checkAndExtendAuctionImmediately(createBidDto.auctionId);
@@ -370,6 +406,50 @@ private checkInactiveConnections() {
       }
     } catch (error) {
       this.logger.error('Error en checkAndExtendAuctionImmediately:', error);
+    }
+  }
+
+  // 🔔 Envía el push "te superaron la puja" al postor que acaba de ser superado.
+  // Best-effort: cualquier error se traga aquí para no afectar la ruta de pujas.
+  private async notifyOutbid(
+    userId: string,
+    auctionId: string,
+    coffeeLotId: string,
+    currentPrice: number,
+  ) {
+    try {
+      const lotName = await this.bidsService.getCoffeeLotName(coffeeLotId);
+      const lotLabel = lotName ? `el lote ${lotName}` : 'tu lote';
+      await this.pushService.sendToUser(userId, {
+        title: 'Te superaron la puja',
+        body: `Hay una nueva puja de $${currentPrice} en ${lotLabel}.`,
+        // El móvil usa estos datos para abrir /lot/[auctionId]/[lotId] al tocar.
+        data: { auctionId, lotId: coffeeLotId },
+      });
+    } catch (error) {
+      this.logger.error('Error enviando push de "te superaron":', error);
+    }
+  }
+
+  // 🎉 Envía el push "ganaste" al adjudicatario de un lote cuando la subasta
+  // cierra. Lo llama AuctionClosureService por cada lote ganado. Best-effort.
+  async notifyAuctionWin(
+    userId: string,
+    auctionId: string,
+    coffeeLotId: string,
+    lotName: string | null,
+    amount: number,
+  ) {
+    try {
+      const lotLabel = lotName ? `el lote ${lotName}` : 'tu lote';
+      await this.pushService.sendToUser(userId, {
+        title: '¡Ganaste la subasta! 🎉',
+        body: `Ganaste ${lotLabel} con tu puja de $${amount}.`,
+        // El móvil abre /lot/[auctionId]/[lotId] al tocar.
+        data: { auctionId, lotId: coffeeLotId },
+      });
+    } catch (error) {
+      this.logger.error('Error enviando push de "ganaste":', error);
     }
   }
 

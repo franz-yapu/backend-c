@@ -6,6 +6,30 @@ import { Prisma } from '@prisma/client';
 export class CrudGeneratorService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Campos que NUNCA deben salir por la API, ni siquiera para ADMIN. El `omit`
+  // global de PrismaService los oculta por defecto, PERO Prisma permite volver a
+  // pedirlos con un `select` explícito → el CRUD genérico (que acepta select/
+  // include del cliente) filtraba el hash con ?select={"password":true}. Aquí se
+  // limpian de cualquier select/include antes de llegar a Prisma.
+  private readonly SENSITIVE_FIELDS = new Set(['password']);
+
+  /** Elimina recursivamente las claves sensibles de un árbol select/include. */
+  private stripSensitive(node: any): any {
+    if (!node || typeof node !== 'object') return node;
+    if (Array.isArray(node)) {
+      node.forEach((n) => this.stripSensitive(n));
+      return node;
+    }
+    for (const key of Object.keys(node)) {
+      if (this.SENSITIVE_FIELDS.has(key)) {
+        delete node[key];
+        continue;
+      }
+      this.stripSensitive(node[key]);
+    }
+    return node;
+  }
+
   private validateModelExists(modelName: string) {
     if (!this.prisma[modelName]) {
       throw new NotFoundException(`El modelo '${modelName}' no existe en la base de datos`);
@@ -172,8 +196,16 @@ export class CrudGeneratorService {
     };
 
     if (orderBy) queryOptions.orderBy = orderBy;
-    if (select) queryOptions.select = select;
-    if (include) queryOptions.include = include;
+    // Sanear select/include del cliente: nunca dejar pedir campos sensibles. Si el
+    // select queda vacío tras limpiar, no se aplica (gana la selección por defecto
+    // con el omit global, que ya excluye password).
+    if (select) {
+      const safeSelect = this.stripSensitive(select);
+      if (safeSelect && Object.keys(safeSelect).length > 0) {
+        queryOptions.select = safeSelect;
+      }
+    }
+    if (include) queryOptions.include = this.stripSensitive(include);
 
  
     const [total, data] = await Promise.all([

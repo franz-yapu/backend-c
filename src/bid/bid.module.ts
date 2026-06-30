@@ -3,6 +3,7 @@ import { AuctionModule } from 'src/auction/auction.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { UsersModule } from 'src/users/users.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 import { BidsController } from './bid.controller';
 import { BidsService } from './bid.service';
 import { BidsGateway } from './bids.gateway';
@@ -12,7 +13,8 @@ import { BidsGateway } from './bids.gateway';
     PrismaModule,
     forwardRef(() => AuctionModule),
     UsersModule,
-    AuthModule
+    AuthModule,
+    NotificationsModule,
   ],
   controllers: [BidsController],
   providers: [

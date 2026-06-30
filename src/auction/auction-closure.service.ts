@@ -178,6 +178,18 @@ export class AuctionClosureService {
     this.bidsGateway.notifyAuctionClosed(auctionId);
   }
 
+  // 2.b Push "ganaste" al adjudicatario de cada lote (fire-and-forget: no debe
+  // bloquear el cierre ni el envío de correos).
+  for (const win of winningTransactions) {
+    void this.bidsGateway.notifyAuctionWin(
+      win.winningBid.userId,
+      auctionId,
+      win.coffeeLot.id,
+      win.coffeeLot.name ?? null,
+      Number(win.winningBid.amount),
+    );
+  }
+
   // 3. Enviar correos FUERA de la transacción (puede tomar tiempo)
   if (winningTransactions.length > 0 && auction) {
     // Usar Promise.all para enviar correos en paralelo

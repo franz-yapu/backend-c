@@ -213,6 +213,42 @@ export class EmailService implements OnModuleInit {
     });
   }
 
+  // Envía al usuario la nueva contraseña generada por un administrador. La
+  // contraseña viaja en claro (decisión del producto): se recomienda cambiarla
+  // al iniciar sesión.
+  async sendNewPasswordEmail(to: string, newPassword: string, name: string): Promise<EmailResponse> {
+    const branding = await this.brandingService.getActiveConfig();
+    const institutionShortName = branding.institutionShortName || 'Cáritas';
+    const loginUrl = `${process.env.FRONTEND_URL || process.env.ENV_FROM_ADDRESS || ''}/login`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; }
+          .password { font-size: 18px; font-weight: bold; letter-spacing: 1px; padding: 8px 12px; background: #f3f3f3; border-radius: 5px; display: inline-block; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2>Hola ${name},</h2>
+          <p>Un administrador restableció tu contraseña. Tu nueva contraseña es:</p>
+          <p class="password">${newPassword}</p>
+          <p>Por seguridad, te recomendamos cambiarla después de iniciar sesión${loginUrl ? ` en <a href="${loginUrl}">${loginUrl}</a>` : ''}.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to,
+      subject: `Tu contraseña fue restablecida - ${institutionShortName}`,
+      html,
+    });
+  }
+
 async sendVerificationEmail(data: any, token: string): Promise<EmailResponse> {
   const to = data.email;
   const fullName = `${data.firstName} ${data.lastName}`.trim();

@@ -1,10 +1,14 @@
-import { Controller, Post, Body, Query, Get, Request, UnauthorizedException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import { Controller, Post, Body, Query, Get, Request, UnauthorizedException, ForbiddenException, InternalServerErrorException, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { AdminResetPasswordDto } from './dto/admin-reset-password.dto';
 import { Public } from './decorators/public.decorator';
+import { RolesGuard } from './guards/roles.guard';
+import { Roles } from './decorators/roles.decorator';
+import { RolesEnum } from './roles.enum';
 
 
 @ApiTags('auth')
@@ -57,6 +61,22 @@ async login(@Body() body: LoginDto) {
     // SU propia contraseña (aunque ya estaba mitigado por exigir currentPassword).
     changePasswordDto.userId = req.user.userId;
     return this.authService.changePassword(changePasswordDto);
+  }
+
+  // Reset de contraseña por ADMIN sobre OTRO usuario: el sistema genera la nueva
+  // contraseña y la envía por email. Protegido por JWT (guard global) + rol ADMIN.
+  @Post('admin-reset-password')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(RolesEnum.ADMIN)
+  @ApiOperation({ summary: 'Restablecer contraseña de un usuario (solo ADMIN)' })
+  @ApiBody({ type: AdminResetPasswordDto })
+  @ApiResponse({ status: 201, description: 'Nueva contraseña enviada por email' })
+  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
+  async adminResetPassword(
+    @Body() dto: AdminResetPasswordDto,
+  ): Promise<{ message: string }> {
+    return this.authService.adminResetPassword(dto.userId);
   }
 
   

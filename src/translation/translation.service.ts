@@ -48,11 +48,25 @@ export class TranslationService {
     adminId: string,
   ): Promise<Record<string, string>> {
     this.assertLocale(locale);
-    if (!overrides || typeof overrides !== 'object') {
+    if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) {
       throw new BadRequestException('overrides debe ser un objeto { clave: valor }');
     }
 
     const entries = Object.entries(overrides);
+
+    // El DTO solo valida @IsObject(): los VALORES pueden venir con tipo arbitrario.
+    // Un valor no-string "truthy" (número, booleano, objeto, array) reventaba el
+    // upsert de Prisma (campo String) → 500. Validar aquí para devolver un 400 limpio.
+    for (const [key, value] of entries) {
+      if (!key || !key.trim()) {
+        throw new BadRequestException('Cada clave de override debe ser un texto no vacío');
+      }
+      if (value !== null && value !== undefined && typeof value !== 'string') {
+        throw new BadRequestException(
+          `El valor de "${key}" debe ser un texto (vacío para borrar el override)`,
+        );
+      }
+    }
     const toDelete = entries.filter(([, v]) => !v || !String(v).trim()).map(([k]) => k);
     const toUpsert = entries.filter(([, v]) => v && String(v).trim());
 

@@ -1,5 +1,6 @@
 // src/dms/dms.controller.ts
 import {
+  BadRequestException,
   Controller,
   Post,
   Get,
@@ -9,6 +10,7 @@ import {
   Param,
   ParseUUIDPipe,
   NotFoundException,
+  Req,
   Res,
 } from '@nestjs/common';
 import { DmsService } from './dms.service';
@@ -16,8 +18,13 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { join, basename } from 'path';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import * as fs from 'fs';
+
+// Límite de tamaño de subida (igual criterio que branding, pero más holgado por
+// los PDFs de certificación). Sin esto cualquier usuario autenticado podía subir
+// archivos de tamaño ilimitado y llenar el disco.
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 import {
   ApiTags,
   ApiConsumes,
@@ -35,6 +42,19 @@ import { Public } from '../auth/decorators/public.decorator';
 @Controller('dms')
 export class DmsController {
   constructor(private readonly dmsService: DmsService) {}
+
+  // Construye la URL pública del archivo a partir del request (honra los headers
+  // del proxy inverso). Antes estaba hardcodeada a http://localhost:3000, que en
+  // los despliegues reales (cafe/caritas.vertexhost.cloud) apuntaba a la nada.
+  private fileUrl(req: Request, filename: string): string {
+    const proto = String(
+      req.headers['x-forwarded-proto'] || req.protocol || 'http',
+    )
+      .split(',')[0]
+      .trim();
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    return `${proto}://${host}/uploads/${filename}`;
+  }
 
   // Streaming de archivos: público, equivalente al estático /uploads (las <img>
   // del front lo consumen sin token). El resto de /dms (upload, metadatos) sí
@@ -77,6 +97,7 @@ export class DmsController {
           cb(null, unique);
         },
       }),
+      limits: { fileSize: MAX_FILE_SIZE },
       fileFilter: (req, file, cb) => {
         const allowed = ['image/png', 'image/jpeg', 'application/pdf'];
         allowed.includes(file.mimetype)
@@ -89,35 +110,39 @@ export class DmsController {
     @UploadedFile() file: Express.Multer.File,
     @Body('type') type: string,
     @Body('user') user: string,
+    @Req() req: Request,
   ) {
+    if (!file) {
+      throw new BadRequestException('No se recibió ningún archivo válido');
+    }
     const saved = await this.dmsService.saveFile(file, type, user);
     return {
       ...saved,
-      url: `http://localhost:3000/uploads/${file.filename}`,
+      url: this.fileUrl(req, file.filename),
     };
   }
 
   @Get()
   @ApiOkResponse({ type: [DmsResponseDto] })
-  async findAll() {
+  async findAll(@Req() req: Request) {
     const files = await this.dmsService.findAll();
     return files.map((file) => ({
       ...file,
-      url: `http://localhost:3000/uploads/${file.path.split('/').pop()}`,
+      url: this.fileUrl(req, file.path.split('/').pop() as string),
     }));
   }
 
   @Get(':id')
   @ApiOkResponse({ type: DmsResponseDto })
   @ApiNotFoundResponse({ description: 'Archivo no encontrado' })
-  async findById(@Param('id', ParseUUIDPipe) id: string) {
+  async findById(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const file = await this.dmsService.findById(id);
     if (!file) {
       throw new NotFoundException('Archivo no encontrado');
     }
     return {
       ...file,
-      url: `http://localhost:3000/uploads/${file.path.split('/').pop()}`,
+      url: this.fileUrl(req, file.path.split('/').pop() as string),
     };
   }
 }

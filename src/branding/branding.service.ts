@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -31,8 +32,6 @@ export class BrandingService {
   /** GET /branding/config — público */
   async getActiveConfig() {
     try {
-      console.log('📡 [BRANDING-DB] Requesting Active Config...');
-
       // Intentar traer por ID fijo primero para consistencia absoluta
       let config = await this.prisma.branding.findUnique({
         where: { id: this.ACTIVE_ID },
@@ -43,16 +42,6 @@ export class BrandingService {
         config = await this.prisma.branding.findFirst({
           orderBy: { updatedAt: 'desc' },
         });
-      }
-
-      if (config) {
-        console.log('✅ [BRANDING-DB] Found configuration in DB:', {
-          id: config.id,
-          primary: config.primaryColor,
-          updatedAt: config.updatedAt
-        });
-      } else {
-        console.log('⚠️ [BRANDING-DB] No configuration found in DB, using DEFAULT_BRANDING');
       }
 
       const base = config || DEFAULT_BRANDING;
@@ -72,12 +61,6 @@ export class BrandingService {
         fontFamily: base.fontFamily || DEFAULT_BRANDING.fontFamily,
         borderRadius: base.borderRadius || DEFAULT_BRANDING.borderRadius,
       };
-
-      console.log('DEBUG: Sending Active Config:', {
-        id: response.id,
-        primary: response.primaryColor,
-        secondary: response.secondaryColor
-      });
 
       return response;
     } catch (error) {
@@ -105,8 +88,7 @@ export class BrandingService {
 
   /** POST /branding/config */
   async create(dto: CreateBrandingDto, _adminId: string) {
-    console.log('📝 [BRANDING-DB] Creating/Upserting Config. Payload:', JSON.stringify(dto));
-    const { id, ...data } = dto as any; 
+    const { id, ...data } = dto as any;
     return this.prisma.branding.upsert({
       where: { id: this.ACTIVE_ID },
       update: { ...data, isActive: true },
@@ -118,7 +100,6 @@ export class BrandingService {
   async update(id: string, dto: UpdateBrandingDto, adminId: string) {
     const current = await this.findById(id);
 
-    console.log('📝 [BRANDING-DB] Updating Config. ID:', id, 'Payload:', JSON.stringify(dto));
     const { id: dtoId, ...data } = dto as any; 
     
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -168,7 +149,11 @@ export class BrandingService {
   async remove(id: string) {
     const config = await this.findById(id);
     if (config.isActive) {
-      throw new Error('No se puede eliminar una configuración activa');
+      // Antes era `throw new Error(...)`, que Nest convertía en un 500 crudo.
+      // Como la única config real es el singleton activo, DELETE siempre daba 500.
+      throw new ConflictException(
+        'No se puede eliminar una configuración de branding activa',
+      );
     }
     return this.prisma.branding.delete({ where: { id } });
   }

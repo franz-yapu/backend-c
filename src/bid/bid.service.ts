@@ -180,6 +180,16 @@ export class BidsService {
     });
   }
 
+  // Nombre del lote para el cuerpo del push "te superaron". Devuelve null si no
+  // existe (el llamador usa un texto genérico).
+  async getCoffeeLotName(coffeeLotId: string): Promise<string | null> {
+    const lot = await this.prisma.coffeeLot.findUnique({
+      where: { id: coffeeLotId },
+      select: { name: true },
+    });
+    return lot?.name ?? null;
+  }
+
   // ✅ NUEVOS MÉTODOS PARA EXTENSIÓN INMEDIATA
   async findRecentBids(auctionId: string, thresholdTime: Date) {
     return this.prisma.bid.findMany({

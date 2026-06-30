@@ -175,10 +175,9 @@ async findAuctionSales(auctionId: string) {
     orderBy: { createdAt: "desc" },
   });
 
-  if (!transactions.length) {
-    throw new NotFoundException(`No hay ventas registradas para la subasta ${auctionId}`);
-  }
-
+  // Sin ventas COMPLETED no es un error: la página pública /winners debe
+  // recibir [] (200) y mostrar "sin ganadores", no un 404 que el front
+  // interpreta como banner de error. Ver findBuyerWins (mismo criterio).
   return transactions.map((tx) => {
     const lot = tx.coffeeLot; // 👈 ahora sí el lote correcto
 
@@ -249,12 +248,9 @@ async findBuyerWins(buyerId: string) {
     },
   });
 
-  if (!transactions.length) {
-    throw new NotFoundException(
-      `El comprador con ID ${buyerId} no ganó ningún lote`
-    );
-  }
-
+  // Un comprador que aún no ganó nada NO es un error: devolver [] (200).
+  // El front (buyer-orders) hace res.map(...) sin handler de error, así que
+  // un 404 dejaba la página rota; el caso vacío es legítimo.
   return transactions.map((tx) => {
     const lot = tx.coffeeLot;
 

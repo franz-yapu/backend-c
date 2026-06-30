@@ -8,12 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  PRODUCER
-  ADMIN
-  CLIENT
-}
-
 enum AuctionStatus {
   DRAFT
   ACTIVE
@@ -72,11 +66,18 @@ model User {
   firstName   String?  @map("first_name")
   lastName    String?  @map("last_name")
   companyName String?  @map("company_name")
-  phone       Int?
+  phone       String?
   address     String?
   city        String?
   country     String?
   isVerified  Boolean  @default(false)
+  // Habilitación de la cuenta gestionada por un ADMIN. Independiente de
+  // isVerified (verificación de email): un admin puede desactivar a un usuario
+  // ya verificado y el login lo rechaza (code ACCOUNT_DISABLED).
+  isActive    Boolean  @default(true) @map("is_active")
+  // Marca el momento del último cambio de contraseña. JwtStrategy rechaza los
+  // tokens emitidos antes de esta fecha, invalidando sesiones previas.
+  passwordChangedAt DateTime? @map("password_changed_at")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   roleId      String   @map("role_id")
@@ -88,8 +89,25 @@ model User {
   bids               Bid[]
   documents          Dms[]
   boughtTransactions Transaction[] @relation("BuyerTransactions")
+  pushTokens         PushToken[]
 
   @@map("user")
+}
+
+// Tokens de Expo Push para notificaciones al móvil (mobile-c). Un usuario puede
+// tener varios dispositivos, por eso es una tabla aparte (no una columna en User).
+// Se usa para avisar "te superaron la puja" desde BidsGateway via PushService.
+model PushToken {
+  id        String   @id @default(uuid())
+  token     String   @unique // ExponentPushToken[...]
+  platform  String? // 'ios' | 'android'
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("push_tokens")
 }
 
 model CoffeeLot {

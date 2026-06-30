@@ -13,7 +13,7 @@ export class UsersService {
     lastName?: string;
     roleName?: string;
     companyName?: string;
-    phone: number;
+    phone?: string;
     city?: string;
     country?: string;
     address?: string;
@@ -27,9 +27,10 @@ export class UsersService {
       throw new ConflictException('El email ya está registrado');
     }
 
-    // Obtener el rol (USER por defecto si no se especifica)
+    // Obtener el rol (BUYER por defecto si no se especifica; 'USER' no existe
+    // como fila en la tabla Role: los roles reales son ADMIN/BUYER/SELLER/GUEST).
     const role = await this.prisma.role.findUnique({
-      where: { name: data.roleName || 'USER' },
+      where: { name: data.roleName || 'BUYER' },
     });
 
     if (!role) {

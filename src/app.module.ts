@@ -23,6 +23,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { TimeController } from './common/time.controller';
 import { BrandingModule } from './branding/branding.module';
 import { TranslationModule } from './translation/translation.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 
 
@@ -50,6 +51,7 @@ import { TranslationModule } from './translation/translation.module';
     DashboardModule,
     BrandingModule,
     TranslationModule,
+    NotificationsModule,
   ],
   controllers: [AppController,TimeController],
   providers: [

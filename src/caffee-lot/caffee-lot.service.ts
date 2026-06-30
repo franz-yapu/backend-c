@@ -54,7 +54,41 @@ export class CoffeeLotsService {
   }
 
   async remove(id: string) {
-    await this.findOne(id); // Verificar que existe
+    const coffeeLot = await this.prisma.coffeeLot.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { auctionDetails: true, bids: true, transactions: true },
+        },
+      },
+    });
+
+    if (!coffeeLot) {
+      throw new NotFoundException(`Coffee lot with ID ${id} not found`);
+    }
+
+    // Guardia de integridad: nunca borrar un lote vinculado a una subasta, con
+    // pujas o con ventas. Sin esto, la cascada de AuctionCoffeeLot lo sacaba
+    // EN SILENCIO de una subasta viva (HTTP 200), y la FK de bids/transactions
+    // (Restrict) devolvía un 500 crudo. Para quitarlo de una subasta usar
+    // removeFromAuction; las pujas/ventas son históricas y no deben perderse.
+    if (coffeeLot.isInAuction || coffeeLot.auctionId || coffeeLot._count.auctionDetails > 0) {
+      throw new ConflictException(
+        `El lote ${id} está vinculado a una subasta; quítalo de la subasta antes de eliminarlo`,
+      );
+    }
+
+    if (coffeeLot._count.bids > 0) {
+      throw new ConflictException(
+        `El lote ${id} tiene pujas registradas y no puede eliminarse`,
+      );
+    }
+
+    if (coffeeLot._count.transactions > 0) {
+      throw new ConflictException(
+        `El lote ${id} tiene transacciones/ventas registradas y no puede eliminarse`,
+      );
+    }
 
     return this.prisma.coffeeLot.delete({
       where: { id },
