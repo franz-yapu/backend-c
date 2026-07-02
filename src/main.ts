@@ -6,6 +6,7 @@ import { BadRequestException, ClassSerializerInterceptor, ValidationPipe, Versio
 import { I18nValidationExceptionFilter, I18nValidationPipe } from 'nestjs-i18n';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { getAppVersion } from './common/version';
 
 const prefixOptions: GlobalPrefixOptions = {
   exclude: ['/'],
@@ -64,7 +65,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('API de Usuarios y Roles')
     .setDescription('Documentación de la API Coffee')
-    .setVersion(process.env.API_VERSION || '1.0')
+    .setVersion(getAppVersion())
     .addBearerAuth(
       {
         type: 'http',

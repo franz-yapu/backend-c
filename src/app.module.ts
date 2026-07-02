@@ -21,6 +21,7 @@ import { EmailModule } from './email/email.module';
 import { UserLogsModule } from './user-logs/user-logs.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { TimeController } from './common/time.controller';
+import { VersionController } from './common/version.controller';
 import { BrandingModule } from './branding/branding.module';
 import { TranslationModule } from './translation/translation.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -53,7 +54,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     TranslationModule,
     NotificationsModule,
   ],
-  controllers: [AppController,TimeController],
+  controllers: [AppController, TimeController, VersionController],
   providers: [
     AppService,
     // Guard global: TODA la API REST exige JWT salvo los endpoints marcados con
