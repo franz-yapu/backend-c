@@ -252,7 +252,9 @@ async function seedActiveAuction() {
 
     await prisma.auctionCoffeeLot.upsert({
       where: { auctionId_coffeeLotId: { auctionId: AUCTION_ID, coffeeLotId: lotId } },
-      update: { startingPrice: d.start, reservePrice: d.start + 2 },
+      // Reseteamos también currentPrice a la base: seedBids() lo sube luego solo
+      // en los lotes con puja, evitando precios "fantasma" de reseeds anteriores.
+      update: { startingPrice: d.start, reservePrice: d.start + 2, currentPrice: d.start },
       create: {
         auctionId: AUCTION_ID,
         coffeeLotId: lotId,
@@ -264,6 +266,83 @@ async function seedActiveAuction() {
   }
 
   console.log(`\nSubasta ACTIVA sembrada: "${AUCTION_ID}" con ${LOT_SEED.length} lotes (termina ${endDate.toISOString()}).`);
+
+  // 4) Pujas de prueba en algunos lotes (para probar historial, "vas ganando",
+  //    precio actual, etc. sin tener que pujar a mano).
+  await seedBids();
+}
+
+// Siembra pujas en los primeros lotes: varios compradores pujando en escalera.
+// Idempotente: borra las pujas previas de esta subasta antes de recrearlas y
+// deja `currentPrice` del lote igual al monto de la puja ganadora.
+async function seedBids() {
+  const buyers = await prisma.user.findMany({
+    where: {
+      email: {
+        in: [
+          'cliente@cafe.test',
+          'maria@cafe.test',
+          'john@buyer.test',
+          'juan@yopmail.com',
+        ],
+      },
+    },
+  });
+  if (buyers.length === 0) {
+    console.log('⚠️  No hay compradores; se omiten las pujas de prueba.');
+    return;
+  }
+
+  // Idempotencia: limpia las pujas anteriores de la subasta de prueba.
+  await prisma.bid.deleteMany({ where: { auctionId: AUCTION_ID } });
+
+  // Sembramos pujas solo en los primeros N lotes; el resto queda "sin pujas".
+  const LOTS_WITH_BIDS = 7;
+  const now = Date.now();
+  let totalBids = 0;
+
+  for (let i = 0; i < LOTS_WITH_BIDS; i++) {
+    const position = i + 1;
+    const lotId = `22222222-0000-0000-0000-${String(position).padStart(12, '0')}`;
+    const startingPrice = LOT_SEED[i].start;
+
+    const nBids = 2 + (i % 3); // entre 2 y 4 pujas por lote
+    let amount = startingPrice;
+    let winning = startingPrice;
+
+    for (let b = 0; b < nBids; b++) {
+      // Sube por encima del incremento mínimo (0.25) de forma creciente.
+      amount = +(amount + 0.25 * (b + 1)).toFixed(2);
+      winning = amount;
+      // Rota compradores para que el "ganador" varíe entre lotes.
+      const buyer = buyers[(i + b) % buyers.length];
+      // Pujas escalonadas en el tiempo (la última, la más reciente).
+      const createdAt = new Date(now - (nBids - b) * 5 * 60 * 1000);
+
+      await prisma.bid.create({
+        data: {
+          amount,
+          auctionId: AUCTION_ID,
+          coffeeLotId: lotId,
+          userId: buyer.id,
+          createdAt,
+        },
+      });
+      totalBids++;
+    }
+
+    // El precio actual del lote = monto de la puja ganadora.
+    await prisma.auctionCoffeeLot.update({
+      where: {
+        auctionId_coffeeLotId: { auctionId: AUCTION_ID, coffeeLotId: lotId },
+      },
+      data: { currentPrice: winning },
+    });
+  }
+
+  console.log(
+    `Pujas de prueba sembradas: ${totalBids} pujas en ${LOTS_WITH_BIDS} lotes (los otros ${LOT_SEED.length - LOTS_WITH_BIDS} quedan sin pujas).`,
+  );
 }
 
 main()
