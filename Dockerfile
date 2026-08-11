@@ -3,7 +3,16 @@ FROM node:20.11.1-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+
+# El DNS del contenedor resuelve registry.npmjs.org a direcciones IPv6, pero la
+# red de Docker no tiene salida IPv6: las conexiones que salen por ahí se quedan
+# colgadas y el install muere con ETIMEDOUT. Se fuerza IPv4 y se dan reintentos
+# para que el build no dependa de la suerte. (Solo afecta a esta etapa de build.)
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
+RUN npm config set fetch-retries 5 \
+    && npm config set fetch-retry-maxtimeout 120000 \
+    && npm install
+
 COPY . .
 
 # Generar cliente de Prisma
