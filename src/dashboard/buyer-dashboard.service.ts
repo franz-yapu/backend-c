@@ -5,6 +5,19 @@ import { BuyerFiltersDto } from './dto/buyer-filters.dto';
 
 @Injectable()
 export class BuyerDashboardService {
+
+  /**
+   * Fin de rango inclusivo. `new Date('2026-08-18')` es las 00:00 de ese dia,
+   * asi que comparar con `lte` dejaba fuera todo lo ocurrido ESE dia. Si la
+   * fecha viene sin hora, se lleva al final del dia.
+   */
+  private finDeDia(valor: string | Date): Date {
+    const fecha = new Date(valor);
+    const soloFecha =
+      typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor.trim());
+    if (soloFecha) fecha.setUTCHours(23, 59, 59, 999);
+    return fecha;
+  }
   constructor(private prisma: PrismaService) {}
 
   // 1. Historial de Pujas del Usuario
@@ -263,7 +276,7 @@ export class BuyerDashboardService {
         whereClause.createdAt.gte = new Date(filters.startDate);
       }
       if (filters.endDate) {
-        whereClause.createdAt.lte = new Date(filters.endDate);
+        whereClause.createdAt.lte = this.finDeDia(filters.endDate);
       }
     }
 
@@ -338,7 +351,7 @@ export class BuyerDashboardService {
         where.createdAt.gte = new Date(filters.startDate);
       }
       if (filters.endDate) {
-        where.createdAt.lte = new Date(filters.endDate);
+        where.createdAt.lte = this.finDeDia(filters.endDate);
       }
     }
 
@@ -374,7 +387,7 @@ export class BuyerDashboardService {
         where.auction.createdAt.gte = new Date(filters.startDate);
       }
       if (filters.endDate) {
-        where.auction.createdAt.lte = new Date(filters.endDate);
+        where.auction.createdAt.lte = this.finDeDia(filters.endDate);
       }
     }
 
@@ -394,7 +407,7 @@ export class BuyerDashboardService {
       }
       
       if (filters.endDate) {
-        dateFilter.lte = new Date(filters.endDate);
+        dateFilter.lte = this.finDeDia(filters.endDate);
       } else {
         dateFilter.lte = new Date();
       }
@@ -452,7 +465,7 @@ export class BuyerDashboardService {
       }
       
       if (filters.endDate) {
-        dateFilter.lte = new Date(filters.endDate);
+        dateFilter.lte = this.finDeDia(filters.endDate);
       } else {
         dateFilter.lte = new Date();
       }
