@@ -259,16 +259,16 @@ export class BidsService {
         select: { status: true, startDate: true, endDate: true, minIncrement: true }
       });
       if (!auction || auction.status !== 'ACTIVE') {
-        throw new Error('La subasta no está activa');
+        throw new BadRequestException('La subasta no está activa');
       }
       // No permitir pujar antes de la fecha de inicio: una subasta puede estar
       // marcada ACTIVE pero con startDate futuro (programada). Sin esto, un
       // cliente podía pujar antes de que la subasta comenzara realmente.
       if (new Date() < new Date(auction.startDate)) {
-        throw new Error('La subasta aún no ha comenzado');
+        throw new BadRequestException('La subasta aún no ha comenzado');
       }
       if (new Date() > new Date(auction.endDate)) {
-        throw new Error('El tiempo de la subasta ha finalizado');
+        throw new BadRequestException('El tiempo de la subasta ha finalizado');
       }
 
       // 1. Verificar precio actual dentro de la transacción
@@ -291,7 +291,7 @@ export class BidsService {
         });
         const startingPrice = Number(auctionDetail?.startingPrice ?? 0);
         if (startingPrice && createBidDto.amount < startingPrice) {
-          throw new Error(`El monto inicial debe ser al menos de $${startingPrice}`);
+          throw new BadRequestException(`El monto inicial debe ser al menos de $${startingPrice}`);
         }
       }
 
@@ -305,7 +305,7 @@ export class BidsService {
         // Estrictamente mayor al precio actual aunque minIncrement sea 0, y
         // siempre respetando el incremento mínimo cuando lo haya.
         if (createBidDto.amount <= currentPrice || createBidDto.amount < minBidAmount) {
-          throw new Error(
+          throw new BadRequestException(
             `El monto debe ser al menos de $${minBidAmount} (precio actual $${currentPrice} + incremento mínimo $${minIncrement})`,
           );
         }
