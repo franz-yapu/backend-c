@@ -56,6 +56,10 @@ export class AuctionsService {
         startDate: createAuctionDto.startDate,
         endDate: createAuctionDto.endDate,
         minIncrement: createAuctionDto.minIncrement || 0.5,
+        // Configuración de la extensión anti-francotirador (antes no se guardaba
+        // y siempre quedaban los valores por defecto: activada, 3 minutos).
+        extensionEnabled: createAuctionDto.extensionEnabled ?? true,
+        extensionMinutes: createAuctionDto.extensionMinutes ?? 3,
         status: AuctionStatus.DRAFT,
         isActive: false,
         adminId: createAuctionDto.adminId,

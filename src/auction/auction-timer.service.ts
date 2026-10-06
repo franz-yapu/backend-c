@@ -86,7 +86,15 @@ export class AuctionTimerService implements OnModuleDestroy {
         if (timeRemaining <= 0) {
           this.logger.log(`⏰ Subasta ${auctionId} terminando - procesando...`);
           await this.processAuctionCompletion(auctionId);
-          this.activeAuctions.delete(auctionId);
+          // Si en vez de cerrarse se extendió, sigue ACTIVE: no soltarla, o solo
+          // la cerraría el CRON de respaldo (hasta 5 min tarde).
+          const sigue = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            select: { status: true },
+          });
+          if (sigue?.status !== AuctionStatus.ACTIVE) {
+            this.activeAuctions.delete(auctionId);
+          }
         }
 
       } catch (error) {

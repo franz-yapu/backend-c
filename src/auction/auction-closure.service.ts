@@ -68,11 +68,14 @@ export class AuctionClosureService {
       return;
     }
 
-    const hasRecentBids = await this.checkForLastMinuteBids(auctionId);
+    const minutos = Math.min(Math.max(auction.extensionMinutes || 3, 1), 30);
+    const hasRecentBids =
+      auction.extensionEnabled !== false &&
+      (await this.checkForLastMinuteBids(auctionId, minutos));
     
     if (hasRecentBids) {
       this.logger.log(`⏰ Subasta ${auctionId} tiene pujas recientes, extendiendo...`);
-      await this.extendAuction(auctionId);
+      await this.extendAuction(auctionId, minutos);
     } else {
       this.logger.log(`🔚 Subasta ${auctionId} no tiene pujas recientes, cerrando...`);
       await this.closeAuction(auctionId);
@@ -84,8 +87,8 @@ export class AuctionClosureService {
   }
 }
 
-  async checkForLastMinuteBids(auctionId: string): Promise<boolean> {
-    const thresholdTime = new Date(Date.now() - this.LAST_MINUTES_THRESHOLD * 60 * 1000);
+  async checkForLastMinuteBids(auctionId: string, minutos = this.LAST_MINUTES_THRESHOLD): Promise<boolean> {
+    const thresholdTime = new Date(Date.now() - minutos * 60 * 1000);
     
     const recentBids = await this.prisma.bid.findFirst({
       where: {
@@ -97,16 +100,16 @@ export class AuctionClosureService {
     return !!recentBids;
   }
 
-  async extendAuction(auctionId: string): Promise<void> {
-    const newEndDate = new Date(Date.now() + this.EXTENSION_MINUTES * 60 * 1000);
+  async extendAuction(auctionId: string, minutos = this.EXTENSION_MINUTES): Promise<void> {
+    const newEndDate = new Date(Date.now() + minutos * 60 * 1000);
     
     await this.prisma.auction.update({
       where: { id: auctionId },
-      data: { endDate: newEndDate }
+      data: { endDate: newEndDate, extendedTimes: { increment: 1 } }
     });
 
     this.logger.log(`⏰ Subasta ${auctionId} extendida hasta ${newEndDate}`);
-    this.bidsGateway.notifyAuctionExtension(auctionId, newEndDate);
+    this.bidsGateway.notifyAuctionExtension(auctionId, newEndDate, minutos);
   }
 
   async closeAuction(auctionId: string) {

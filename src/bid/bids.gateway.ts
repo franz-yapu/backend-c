@@ -394,18 +394,22 @@ private checkInactiveConnections() {
         return;
       }
 
+      // La subasta decide si extiende y cuánto (antes eran 3 min fijos).
+      if (auction.extensionEnabled === false) return;
+      const minutos = Math.min(Math.max(auction.extensionMinutes || 3, 1), 30);
+
       const now = new Date();
       const endDate = new Date(auction.endDate);
       const timeRemaining = endDate.getTime() - now.getTime();
 
-      // Solo extender si quedan menos de 3 minutos
-      if (timeRemaining <= 3 * 60 * 1000) {
-        const newEndDate = new Date(Date.now() + 3 * 60 * 1000);
+      // Solo extender si queda menos que la ventana de extensión
+      if (timeRemaining <= minutos * 60 * 1000) {
+        const newEndDate = new Date(Date.now() + minutos * 60 * 1000);
 
         await this.bidsService.extendAuction(auctionId, newEndDate);
 
-        this.logger.log(`⏰✅ Subasta ${auctionId} extendida INMEDIATAMENTE por puja en últimos 3 minutos`);
-        await this.notifyAuctionExtension(auctionId, newEndDate);
+        this.logger.log(`⏰✅ Subasta ${auctionId} extendida ${minutos} min por puja en los últimos ${minutos} min`);
+        await this.notifyAuctionExtension(auctionId, newEndDate, minutos);
       }
     } catch (error) {
       this.logger.error('Error en checkAndExtendAuctionImmediately:', error);
@@ -465,15 +469,15 @@ private checkInactiveConnections() {
   }
 
   // ✅ MEJORADO: Notificar extensión con información completa
-  async notifyAuctionExtension(auctionId: string, newEndDate: Date) {
+  async notifyAuctionExtension(auctionId: string, newEndDate: Date, minutos = 3) {
     this.logger.log(`📢 Emitiendo auctionExtended para subasta ${auctionId}`);
 
     // Emitir a TODOS los clientes, no solo a la sala
     this.server.emit('auctionExtended', {
       auctionId: auctionId,
       newEndDate: newEndDate.toISOString(),
-      extendedBy: '3 minutos',
-      reason: 'Puja realizada en los últimos 3 minutos de la subasta',
+      extendedBy: `${minutos} minutos`,
+      reason: `Puja realizada en los últimos ${minutos} minutos de la subasta`,
       timestamp: new Date().toISOString(),
       serverTimestamp: Date.now(),
       // Información adicional para actualizar contadores
@@ -485,8 +489,8 @@ private checkInactiveConnections() {
     this.server.to(`auction-${auctionId}`).emit('auctionExtended', {
       auctionId: auctionId,
       newEndDate: newEndDate.toISOString(),
-      extendedBy: '3 minutos',
-      reason: 'Puja realizada en los últimos 3 minutos de la subasta',
+      extendedBy: `${minutos} minutos`,
+      reason: `Puja realizada en los últimos ${minutos} minutos de la subasta`,
       timestamp: new Date().toISOString(),
       serverTimestamp: Date.now(),
     });

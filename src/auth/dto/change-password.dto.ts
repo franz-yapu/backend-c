@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, MinLength, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, MinLength, IsNotEmpty, IsOptional, Matches } from 'class-validator';
 
 export class ChangePasswordDto {
   // El controller SIEMPRE lo sobrescribe con el userId del JWT; es opcional en el
@@ -15,7 +15,10 @@ export class ChangePasswordDto {
   currentPassword: string; // Contraseña actual para validación
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
+  @Matches(/^(?=.*[A-Za-z])(?=.*\d)/, {
+    message: 'La contraseña debe tener al menos 8 caracteres, con una letra y un número.',
+  })
   @ApiProperty({ example: 'sample1' })
   newPassword: string; // Nueva contraseña
 }

@@ -205,7 +205,7 @@ export class BidsService {
   async extendAuction(auctionId: string, newEndDate: Date) {
     return this.prisma.auction.update({
       where: { id: auctionId },
-      data: { endDate: newEndDate }
+      data: { endDate: newEndDate , extendedTimes: { increment: 1 } }
     });
   }
 
