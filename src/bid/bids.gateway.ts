@@ -125,6 +125,9 @@ export class BidsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         });
         client.data.userId = payload.sub;
         client.data.role = payload.role;
+        // Sala personal: para avisos dirigidos a esta persona (p. ej. "te
+        // superaron la puja") en todas sus pestañas y dispositivos abiertos.
+        client.join(`user-${payload.sub}`);
       } catch (error) {
         this.logger.warn(`🔒 Socket ${client.id} con token inválido/expirado (modo solo-lectura)`);
       }
@@ -420,6 +423,14 @@ private checkInactiveConnections() {
     try {
       const lotName = await this.bidsService.getCoffeeLotName(coffeeLotId);
       const lotLabel = lotName ? `el lote ${lotName}` : 'tu lote';
+      // Web: aviso en vivo a la sala personal del postor superado.
+      this.server.to(`user-${userId}`).emit('outbid', {
+        auctionId,
+        coffeeLotId,
+        lotName,
+        currentPrice,
+        timestamp: Date.now(),
+      });
       await this.pushService.sendToUser(userId, {
         title: 'Te superaron la puja',
         body: `Hay una nueva puja de $${currentPrice} en ${lotLabel}.`,

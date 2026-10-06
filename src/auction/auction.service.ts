@@ -9,10 +9,27 @@ import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { AuctionStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuctionTimerService } from './auction-timer.service';
+import { AuctionClosureService } from './auction-closure.service';
 
 @Injectable()
 export class AuctionsService {
-  constructor(private prisma: PrismaService, private auctionTimerService: AuctionTimerService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auctionTimerService: AuctionTimerService,
+    private auctionClosureService: AuctionClosureService,
+  ) {}
+
+  /**
+   * Cierre MANUAL de una subasta en curso. Antes, poner `status: CLOSED` desde el
+   * admin solo cambiaba el estado: sin ganadores, sin transacciones, sin correos,
+   * y con los lotes colgados. Ahora pasa por el mismo `closeAuction` que usa el
+   * cierre automático (candado ACTIVE→CLOSED, adjudicación por lote, aviso por
+   * socket y correos), así que cerrar a mano equivale a que se acabe el tiempo.
+   */
+  private async cerrarYAdjudicar(id: string) {
+    this.auctionTimerService.onAuctionDeactivated(id);
+    await this.auctionClosureService.closeAuction(id);
+  }
 
   async create(createAuctionDto: CreateAuctionDto) {
     const admin = await this.prisma.user.findUnique({
@@ -185,11 +202,34 @@ export class AuctionsService {
       data.isActive = false;
     }
 
+    const cierraEnCurso =
+      updateAuctionDto.status === AuctionStatus.CLOSED &&
+      auction.status === AuctionStatus.ACTIVE;
+    if (cierraEnCurso) {
+      // El cambio de estado lo hace closeAuction (su candado exige ACTIVE).
+      delete data.status;
+      delete data.isActive;
+    }
+
     const updatedAuction = await this.activateGuarded(id, data, {
       admin: true,
       seller: true,
       auctionDetails: { include: { coffeeLot: true } },
     });
+
+    if (cierraEnCurso) {
+      // Ya cerrada y adjudicada: no hay contador que actualizar en pantalla
+      // (closeAuction emite auctionClosed). Se devuelve el estado final.
+      await this.cerrarYAdjudicar(id);
+      return this.prisma.auction.findUniqueOrThrow({
+        where: { id },
+        include: {
+          admin: true,
+          seller: true,
+          auctionDetails: { include: { coffeeLot: true } },
+        },
+      });
+    }
 
     if (updateAuctionDto.status === AuctionStatus.ACTIVE) {
       this.auctionTimerService.onAuctionActivated(id);
@@ -265,6 +305,16 @@ export class AuctionsService {
       if (lotsCount === 0) {
         throw new BadRequestException('Cannot activate auction without coffee lots');
       }
+    }
+
+    // Cerrar una subasta EN CURSO = adjudicarla (ver cerrarYAdjudicar). Cerrar un
+    // borrador sigue siendo solo un cambio de estado: no hay pujas que adjudicar.
+    if (status === AuctionStatus.CLOSED && auction.status === AuctionStatus.ACTIVE) {
+      await this.cerrarYAdjudicar(id);
+      return this.prisma.auction.findUniqueOrThrow({
+        where: { id },
+        include: { auctionDetails: { include: { coffeeLot: true } } },
+      });
     }
 
     // Misma garantía que update(): BLOQUEA si ya hay otra activa (antes esta ruta
