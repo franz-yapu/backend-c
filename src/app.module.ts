@@ -13,7 +13,12 @@ import { TransactionModule } from './transaction/transaction.module';
 import { AuctionModule } from './auction/auction.module';
 import { BidModule } from './bid/bid.module';
 import { CrudGeneratorModule } from './crud-generator/crud-generator.module';
-import { I18nModule } from 'nestjs-i18n';
+import {
+  AcceptLanguageResolver,
+  HeaderResolver,
+  I18nModule,
+  QueryResolver,
+} from 'nestjs-i18n';
 import * as path from 'path';
 import { BidsGateway } from './bid/bids.gateway';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -37,6 +42,14 @@ import { NotificationsModule } from './notifications/notifications.module';
        path: path.join(__dirname, '../i18n/'), // Ruta a tus archivos de traducción
         watch: true,
       },
+      // Sin resolvers, nestjs-i18n avisa al arrancar ("No resolvers provided")
+      // y sirve siempre el idioma por defecto. Se aceptan, por este orden:
+      // ?lang=en, la cabecera x-lang y el Accept-Language del navegador.
+      resolvers: [
+        { use: QueryResolver, options: ['lang'] },
+        new HeaderResolver(['x-lang']),
+        AcceptLanguageResolver,
+      ],
     }),
     AuthModule,
     UsersModule,

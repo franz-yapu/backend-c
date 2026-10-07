@@ -113,35 +113,68 @@ export class AuthService {
     // ConflictException 409) propagan tal cual, NO se convierten en 500.
     const created = await this.usersService.createUser(createUserDto);
 
-    // Auto-verificación del registro público: el comprador queda verificado al
-    // instante y puede iniciar sesión sin confirmar el correo. Se decidió así
-    // porque el flujo por email era frágil (dependía del front web, del cert TLS
-    // y del SMTP) y dejaba a compradores sin poder entrar. Si en el futuro se
-    // quiere reactivar la confirmación por correo, restaurar isVerified:false +
-    // sendVerificationEmail (ver confirmAccount()).
-    const user = await this.prisma.user.update({
+    // La cuenta nace SIN verificar: hasta que el usuario pulse el botón del
+    // correo no puede iniciar sesión (validateUser lo rechaza con
+    // ACCOUNT_NOT_VERIFIED). El enlace lleva un JWT de 48 h y apunta a
+    // `${ENV_FROM_ADDRESS}/login?token=…`, donde el front llama a /auth/confirm
+    // y avisa de que la cuenta ya está activa.
+    const user = await this.prisma.user.findUnique({
       where: { id: created.id },
-      data: { isVerified: true },
       include: { role: true },
     });
 
-    // Correo de bienvenida BEST-EFFORT: si el SMTP falla, el registro NO debe
-    // fallar (la cuenta ya quedó utilizable).
-    try {
-      await this.emailService.sendWelcomeEmail(
-        user,
-        this.jwtService.sign({ email: user.email }, { expiresIn: '48h' }),
-      );
-    } catch (e: any) {
-      console.error('No se pudo enviar el correo de bienvenida:', e?.message || e);
-    }
+    const enviado = await this.enviarCorreoDeVerificacion(user);
 
-    // NO se devuelve token de sesión: el usuario inicia sesión normalmente con
-    // sus credenciales (ya verificado).
     return {
-      message: 'Cuenta creada. Ya puedes iniciar sesión.',
+      message: enviado
+        ? 'Cuenta creada. Te enviamos un correo para activarla: entra en él y pulsa el botón de verificación.'
+        : 'Cuenta creada, pero no se pudo enviar el correo de verificación. Vuelve a pedirlo o avisa al administrador.',
+      emailSent: enviado,
       user: user,
     };
+  }
+
+  /**
+   * Manda el correo con el botón de activación. Devuelve si salió o no, pero
+   * NUNCA lanza: que el SMTP falle no debe romper el registro (la cuenta ya
+   * existe y el correo se puede volver a pedir).
+   */
+  private async enviarCorreoDeVerificacion(user: any): Promise<boolean> {
+    try {
+      const token = this.jwtService.sign(
+        { email: user.email },
+        { expiresIn: '48h' },
+      );
+      await this.emailService.sendVerificationEmail(user, token);
+      return true;
+    } catch (e: any) {
+      console.error(
+        'No se pudo enviar el correo de verificación:',
+        e?.message || e,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Reenvía el correo de activación. Responde siempre lo mismo exista o no la
+   * cuenta: si dijera "ese correo no está registrado" serviría para averiguar
+   * quién tiene cuenta.
+   */
+  async resendVerification(email: string) {
+    const generico = {
+      message:
+        'Si ese correo tiene una cuenta sin activar, te acabamos de enviar el enlace de activación.',
+    };
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      include: { role: true },
+    });
+    if (!user || user.isVerified) {
+      return generico;
+    }
+    await this.enviarCorreoDeVerificacion(user);
+    return generico;
   }
 
   async changePassword(changePasswordDto: ChangePasswordDto) {

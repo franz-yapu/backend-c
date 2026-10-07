@@ -78,6 +78,11 @@ model User {
   // Marca el momento del último cambio de contraseña. JwtStrategy rechaza los
   // tokens emitidos antes de esta fecha, invalidando sesiones previas.
   passwordChangedAt DateTime? @map("password_changed_at")
+  // Tour del comprador: se enseña las 3 primeras veces que inicia sesión, y
+  // deja de salir si pulsa "No volver a mostrar". Va en la cuenta y no en el
+  // navegador para que las 3 veces sean 3 en total, no 3 por dispositivo.
+  tourSeenCount Int     @default(0) @map("tour_seen_count")
+  tourDismissed Boolean @default(false) @map("tour_dismissed")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   roleId      String   @map("role_id")
@@ -301,6 +306,13 @@ model Branding {
   borderRadius          String?  @default("4px") @map("border_radius")
   institutionName       String?  @default("Cáritas Bolivia") @map("institution_name")
   institutionShortName  String?  @default("Cáritas") @map("institution_short_name")
+  // Interruptor de la sección pública de Ganadores. Apagado por defecto: en el
+  // uso normal (una subasta al año, sistema que se reinicia de cero para la
+  // siguiente) la tabla de ganadores ya sale sola dentro de Subasta Activa al
+  // cerrarse, así que el enlace del menú duplica la información. Se enciende
+  // desde el panel de Branding si alguien lleva varias subastas seguidas y
+  // quiere el histórico accesible por su cuenta.
+  showWinnersSection    Boolean  @default(false) @map("show_winners_section")
   isActive              Boolean  @default(false) @map("is_active")
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")

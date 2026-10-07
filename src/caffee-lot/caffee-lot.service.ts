@@ -1,5 +1,12 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { BidsGateway } from 'src/bid/bids.gateway';
 import { CreateCoffeeLotDto } from './dto/create-caffee-lot.dto';
 import { UpdateCoffeeLotDto } from './dto/update-caffee-lot.dto';
 import { AddCoffeeLotToAuctionDto } from './dto/add-coffee-lot-to-auction.dto';
@@ -7,7 +14,11 @@ import { AddCoffeeLotToAuctionDto } from './dto/add-coffee-lot-to-auction.dto';
 
 @Injectable()
 export class CoffeeLotsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => BidsGateway))
+    private bidsGateway: BidsGateway,
+  ) {}
 
     async create(createCoffeeLotDto: CreateCoffeeLotDto) {
 
@@ -122,8 +133,17 @@ export class CoffeeLotsService {
       throw new ConflictException(`Coffee lot with ID ${coffeeLotId} is already in an auction`);
     }
 
+    // Un lote vendido no se vuelve a subastar. Al cerrar una subasta los lotes
+    // adjudicados quedan con `isInAuction: false`, así que la comprobación de
+    // arriba no los frenaba: se podía sacar a subasta café que ya tenía dueño.
+    if (coffeeLot.status === 'SOLD') {
+      throw new ConflictException(
+        `El lote "${coffeeLot.name}" ya fue vendido en una subasta anterior`,
+      );
+    }
+
     // Crear la relación AuctionCoffeeLot
-    return this.prisma.$transaction(async (tx) => {
+    const creado = await this.prisma.$transaction(async (tx) => {
       // Crear la relación
       const auctionCoffeeLot = await tx.auctionCoffeeLot.create({
         data: {
@@ -150,6 +170,14 @@ export class CoffeeLotsService {
 
       return auctionCoffeeLot;
     });
+
+    // Si la subasta ya está en marcha, avisar para que las pantallas abiertas
+    // recojan el lote nuevo (si no, solo lo vería quien recargue).
+    if (auction.status === 'ACTIVE') {
+      void this.bidsGateway.notifyLotsChanged(auctionId);
+    }
+
+    return creado;
   }
 
 
@@ -190,6 +218,26 @@ export class CoffeeLotsService {
 
     if (!auctionCoffeeLot) {
       throw new NotFoundException(`Coffee lot with ID ${coffeeLotId} is not in auction with ID ${auctionId}`);
+    }
+
+    // Un lote con pujas NO se saca de una subasta que ya empezó: las pujas
+    // quedarían huérfanas (apuntan al lote, no a la relación), el lote no se
+    // adjudicaría al cerrar y quien iba ganando se quedaría sin nada y sin
+    // aviso. Para retirarlo hay que cerrar o volver la subasta a borrador.
+    const auction = await this.prisma.auction.findUnique({
+      where: { id: auctionId },
+      select: { status: true, title: true },
+    });
+
+    if (auction && auction.status !== 'DRAFT') {
+      const pujas = await this.prisma.bid.count({
+        where: { auctionId, coffeeLotId },
+      });
+      if (pujas > 0) {
+        throw new ConflictException(
+          `No se puede quitar este lote: ya tiene ${pujas} puja(s) en una subasta ${auction.status === 'ACTIVE' ? 'en curso' : 'cerrada'}.`,
+        );
+      }
     }
 
     return this.prisma.$transaction(async (tx) => {

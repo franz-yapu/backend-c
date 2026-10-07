@@ -78,6 +78,25 @@ export class UsersService {
     });
   }
 
+  /**
+   * Estado del tour del comprador. `visto` suma una vez; `noMostrarMas` lo apaga.
+   * Devuelve solo lo que el front necesita, no la ficha entera del usuario.
+   */
+  async updateTour(id: string, dto: { visto?: boolean; noMostrarMas?: boolean }) {
+    const data: any = {};
+    if (dto?.visto) data.tourSeenCount = { increment: 1 };
+    if (dto?.noMostrarMas) data.tourDismissed = true;
+
+    const user = Object.keys(data).length
+      ? await this.prisma.user.update({ where: { id }, data })
+      : await this.prisma.user.findUniqueOrThrow({ where: { id } });
+
+    return {
+      tourSeenCount: user.tourSeenCount,
+      tourDismissed: user.tourDismissed,
+    };
+  }
+
   async updateUser(id: string, data: {
     firstName?: string;
     lastName?: string;

@@ -26,6 +26,7 @@ import {
 } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { TourDto } from './dto/tour.dto';
 import { Role } from '@prisma/client';
 import { RolesEnum } from 'src/auth/roles.enum';
 
@@ -61,6 +62,15 @@ export class UsersController {
   @ApiBody({ type: UpdateProfileDto })
   async updateMe(@Request() req: any, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(req.user.userId, dto);
+  }
+
+  // Tour del comprador: el front avisa de que se ha visto una vez, o de que el
+  // usuario ha pulsado "No volver a mostrar". Siempre sobre el usuario del token.
+  @Post('me/tour')
+  @ApiOperation({ summary: 'Marcar el tour como visto o apagarlo' })
+  @ApiBody({ type: TourDto })
+  async updateTour(@Request() req: any, @Body() dto: TourDto) {
+    return this.usersService.updateTour(req.user.userId, dto);
   }
 
   @Get()

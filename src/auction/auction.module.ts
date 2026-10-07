@@ -11,8 +11,11 @@ import { AuctionTimerService } from './auction-timer.service';
 
 @Module({
   imports: [
-    PrismaModule, 
-    CaffeeLotModule, 
+    PrismaModule,
+    // forwardRef en los dos: desde que el módulo de lotes avisa por WebSocket
+    // (BidsGateway) hay un ciclo Auction → CaffeeLot → Bid → Auction, y sin
+    // esto uno de los tres se evalúa a `undefined` y Nest no arranca.
+    forwardRef(() => CaffeeLotModule),
     UsersModule,
     forwardRef(() => BidModule),
     EmailModule,

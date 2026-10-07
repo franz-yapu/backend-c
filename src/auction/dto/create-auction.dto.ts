@@ -59,16 +59,25 @@ export class CreateAuctionDto {
   @IsNotEmpty()
   adminId: string;
 
-  @ApiProperty({ description: 'ID del vendedor/productor' })
+  /**
+   * Opcional: una subasta puede reunir lotes de varios productores, y el panel
+   * del admin no lo pide. Era obligatorio, así que TODA creación desde el
+   * formulario fallaba con 400 (el front no lo envía).
+   */
+  @ApiProperty({ description: 'ID del vendedor/productor', required: false })
   @IsString()
-  @IsNotEmpty()
-  sellerId: string;
+  @IsOptional()
+  sellerId?: string;
 
-   @ApiProperty({ description: 'original End Date)' , 
-    required: true  })
-   @IsISO8601({ strict: true }) // Más estricto que IsDateString
-   @IsNotEmpty()
-   originalEndDate: string;
+  /**
+   * Opcional también: lo lleva el servidor. Es la fecha de cierre original, la
+   * que sirve para saber cuánto se extendió una subasta, así que la fija el
+   * backend al crearla, no el cliente.
+   */
+  @ApiProperty({ description: 'Fecha de cierre original', required: false })
+  @IsISO8601({ strict: true })
+  @IsOptional()
+  originalEndDate?: string;
 
    @ApiProperty({ 
     description: 'extended Times', 

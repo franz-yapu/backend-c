@@ -159,7 +159,15 @@ export class TransactionsService {
     });
   }
 
-async findAuctionSales(auctionId: string) {
+/**
+ * Ventas (ganadores) de una subasta.
+ *
+ * `incluirContacto` sale de la ruta que llama: la página pública /winners NO
+ * debe publicar el correo de los compradores —cualquiera podría cosechar los
+ * correos de todos los ganadores sin siquiera iniciar sesión—, y el panel del
+ * administrador sí lo necesita para contactarlos.
+ */
+async findAuctionSales(auctionId: string, incluirContacto = false) {
   // Traer todas las transacciones de la subasta con sus relaciones
   const transactions = await this.prisma.transaction.findMany({
     where: { auctionId, status: "COMPLETED" },
@@ -209,8 +217,8 @@ async findAuctionSales(auctionId: string) {
       buyer: {
         id: tx.buyer.id,
         name: `${tx.buyer.firstName} ${tx.buyer.lastName}`,
-        email: tx.buyer.email,
         company: tx.buyer.companyName,
+        ...(incluirContacto ? { email: tx.buyer.email } : {}),
       },
 
       pricing: {

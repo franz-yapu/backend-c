@@ -217,8 +217,22 @@ export class TransactionsController {
   @Public() // Página pública /winners lista las ventas (ganadores) de una subasta.
   @Get('auction/:auctionId/sales')
   async findAuctionSales(@Param('auctionId') auctionId: string) {
-  return this.transactionsService.findAuctionSales(auctionId);
-}
+    // Sin datos de contacto: esta ruta la puede leer cualquiera sin iniciar
+    // sesión. Devuelve nombre y empresa del ganador, que es lo que muestra la
+    // página de ganadores.
+    return this.transactionsService.findAuctionSales(auctionId, false);
+  }
+
+  @Get('auction/:auctionId/sales/contact')
+  @Roles(RolesEnum.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Ventas de una subasta incluyendo el correo del comprador (admin)',
+  })
+  @ApiParam({ name: 'auctionId', description: 'Auction ID' })
+  async findAuctionSalesWithContact(@Param('auctionId') auctionId: string) {
+    return this.transactionsService.findAuctionSales(auctionId, true);
+  }
 
 @Get('buyer/:buyerId/wins')
 @ApiOperation({ summary: 'Get all coffee lots won by a buyer' })

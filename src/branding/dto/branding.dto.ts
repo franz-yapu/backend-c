@@ -91,6 +91,17 @@ export class CreateBrandingDto {
   @IsString()
   @MaxLength(50)
   institutionShortName?: string;
+
+  @ApiProperty({
+    example: false,
+    required: false,
+    description:
+      'Muestra el enlace "Ganadores" en el menú público. Apagado por defecto: '
+      + 'al cerrarse la subasta, la tabla de ganadores ya aparece dentro de Subasta Activa.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  showWinnersSection?: boolean;
 }
 
 export class UpdateBrandingDto {
@@ -178,4 +189,15 @@ export class UpdateBrandingDto {
   @IsString()
   @MaxLength(50)
   institutionShortName?: string;
+
+  @ApiProperty({
+    example: false,
+    required: false,
+    description:
+      'Muestra el enlace "Ganadores" en el menú público. Apagado por defecto: '
+      + 'al cerrarse la subasta, la tabla de ganadores ya aparece dentro de Subasta Activa.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  showWinnersSection?: boolean;
 }

@@ -1,13 +1,16 @@
 import {
-  Controller,
-  Post,
+  BadRequestException,
   Body,
+  Controller,
+  ForbiddenException,
   Get,
+  Inject,
   Param,
   ParseUUIDPipe,
+  Post,
   Query,
   Request,
-  ForbiddenException,
+  forwardRef,
 } from '@nestjs/common';
 
 import { CreateBidDto } from './dto/create-bid.dto';
@@ -22,13 +25,18 @@ import {
 } from '@nestjs/swagger';
 import { BidResponseDto } from './dto/bid-response.dto';
 import { BidsService } from './bid.service';
+import { BidsGateway } from './bids.gateway';
 import { Public } from '../auth/decorators/public.decorator';
 import { RolesEnum } from '../auth/roles.enum';
 
 @ApiTags('Bids')
 @Controller('bids')
 export class BidsController {
-  constructor(private readonly bidsService: BidsService) {}
+  constructor(
+    private readonly bidsService: BidsService,
+    @Inject(forwardRef(() => BidsGateway))
+    private readonly bidsGateway: BidsGateway,
+  ) {}
 
   @Post()
   @ApiBearerAuth()
@@ -37,13 +45,24 @@ export class BidsController {
   @ApiResponse({ status: 400, description: 'Invalid bid amount or auction not active' })
   @ApiResponse({ status: 404, description: 'Auction or user not found' })
   @ApiBody({ type: CreateBidDto })
-  create(@Body() createBidDto: CreateBidDto, @Request() req: any) {
-    // Identidad SIEMPRE del JWT (no del body → no se puede pujar como otro) y
-    // mismo camino con advisory lock + minIncrement que el socket. Antes esta
-    // ruta REST tomaba userId del body y NO bloqueaba → puenteaba toda la
-    // equidad/seguridad de las pujas.
+  async create(@Body() createBidDto: CreateBidDto, @Request() req: any) {
+    // Identidad SIEMPRE del JWT (no del body → no se puede pujar como otro).
     createBidDto.userId = req.user.userId;
-    return this.bidsService.createWithOptimisticLock(createBidDto);
+
+    // Esta ruta es el respaldo de la puja cuando el comprador se queda sin
+    // WebSocket (habitual con internet inestable). Va por la MISMA cola por
+    // lote del gateway, así que respeta el orden de llegada frente a las pujas
+    // que entran por socket, y difunde `newBid` para que el resto de la sala
+    // vea el precio nuevo al momento. Antes llamaba al servicio por su cuenta:
+    // la puja quedaba registrada, pero nadie se enteraba hasta recargar.
+    try {
+      const result = await this.bidsGateway.enqueueBid(createBidDto);
+      return result?.bid ?? result;
+    } catch (error: any) {
+      // Mismo criterio que por socket: al usuario no le llega el detalle de la
+      // base de datos (el error completo sí queda en el log del servidor).
+      throw new BadRequestException(BidsGateway.mensajeParaUsuario(error));
+    }
   }
 
   @Get('auction/:auctionId')

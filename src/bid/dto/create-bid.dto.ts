@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsNotEmpty, IsPositive } from 'class-validator';
+import {
+  IsNumber,
+  IsNotEmpty,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 
 export class CreateBidDto {
   @ApiProperty({ description: 'Valor de la puja (USD/kg)' })
@@ -13,10 +19,16 @@ export class CreateBidDto {
   @IsNotEmpty()
   auctionId: string;
 
-  @ApiProperty({ description: 'ID del usuario' })
+  /**
+   * Lo rellena SIEMPRE el servidor con el usuario del token (en el gateway y en
+   * el controlador), así que el cliente no necesita mandarlo — y aunque lo
+   * mande, se descarta: no se puede pujar en nombre de otro. Era obligatorio y
+   * eso hacía fallar con 400 a quien pujara por HTTP sin incluirlo.
+   */
+  @ApiProperty({ description: 'ID del usuario (lo pone el servidor)', required: false })
   @IsString()
-  @IsNotEmpty()
-  userId: string;
+  @IsOptional()
+  userId?: string;
 
  @ApiProperty({ description: 'ID del coffeeLotId' })
   @IsString()

@@ -20,6 +20,9 @@ const DEFAULT_BRANDING = {
   borderRadius: '4px',
   institutionName: 'Cáritas Bolivia',
   institutionShortName: 'Cáritas',
+  // Sin fila en BD el menú público no enseña Ganadores: la sección solo se
+  // activa a propósito desde el panel de Branding.
+  showWinnersSection: false,
   isActive: true,
 };
 

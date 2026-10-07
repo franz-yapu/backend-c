@@ -86,6 +86,16 @@ async confirmAccount(@Body() body: { token: string }) {
   return this.authService.confirmAccount(body.token);
 }
 
+  // Reenvío del correo de activación: si el primero se perdió (o caducó a las
+  // 48 h), el comprador no se queda fuera esperando a un administrador.
+  @Public()
+  @Post('resend-verification')
+  @ApiOperation({ summary: 'Reenviar el correo de activación de la cuenta' })
+  @ApiResponse({ status: 201, description: 'Respuesta genérica: no revela si el correo existe' })
+  async resendVerification(@Body() body: { email: string }) {
+    return this.authService.resendVerification(body?.email);
+  }
+
   // Endpoint público dedicado para el dropdown de roles del registro. Sustituye
   // al antiguo GET /dynamic/role (el CRUD genérico ya NO es público).
   @Public()

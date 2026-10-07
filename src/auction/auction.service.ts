@@ -1,8 +1,10 @@
-import { 
-  Injectable, 
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
   NotFoundException,
-  BadRequestException, 
-  ConflictException
+  forwardRef,
 } from '@nestjs/common';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
@@ -10,6 +12,21 @@ import { AuctionStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuctionTimerService } from './auction-timer.service';
 import { AuctionClosureService } from './auction-closure.service';
+import { BidsGateway } from 'src/bid/bids.gateway';
+
+/**
+ * Lo único que se publica de una persona junto a una subasta. El `include` de
+ * Prisma sin `select` devolvía la ficha entera —correo, teléfono, dirección,
+ * ciudad, fechas— y `/auctions/active` es una ruta PÚBLICA: cualquiera podía
+ * leer los datos de contacto del administrador y del productor sin iniciar
+ * sesión. Con esto solo sale lo que la pantalla necesita para poner un nombre.
+ */
+const PERSONA_PUBLICA = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  companyName: true,
+} as const;
 
 @Injectable()
 export class AuctionsService {
@@ -17,6 +34,8 @@ export class AuctionsService {
     private prisma: PrismaService,
     private auctionTimerService: AuctionTimerService,
     private auctionClosureService: AuctionClosureService,
+    @Inject(forwardRef(() => BidsGateway))
+    private bidsGateway: BidsGateway,
   ) {}
 
   /**
@@ -60,14 +79,17 @@ export class AuctionsService {
         // y siempre quedaban los valores por defecto: activada, 3 minutos).
         extensionEnabled: createAuctionDto.extensionEnabled ?? true,
         extensionMinutes: createAuctionDto.extensionMinutes ?? 3,
+        // La fecha de cierre "original" la fija el servidor: es la referencia
+        // para saber cuánto se alargó la subasta con las extensiones.
+        originalEndDate: createAuctionDto.endDate,
         status: AuctionStatus.DRAFT,
         isActive: false,
         adminId: createAuctionDto.adminId,
         sellerId: createAuctionDto.sellerId
       },
       include: {
-        admin: true,
-        seller: true
+        admin: { select: PERSONA_PUBLICA },
+        seller: { select: PERSONA_PUBLICA },
       }
     });
   }
@@ -113,8 +135,8 @@ export class AuctionsService {
   async findAll() {
     return this.prisma.auction.findMany({
       include: {
-        admin: true,
-        seller: true,
+        admin: { select: PERSONA_PUBLICA },
+        seller: { select: PERSONA_PUBLICA },
         auctionDetails: {
           include: { coffeeLot: true }
         },
@@ -133,8 +155,8 @@ export class AuctionsService {
       // status ACTIVE pero isActive false. Refuerza "solo una activa".
       where: { status: 'ACTIVE', isActive: true },
       include: {
-        admin: true,
-        seller: true,
+        admin: { select: PERSONA_PUBLICA },
+        seller: { select: PERSONA_PUBLICA },
         auctionDetails: {
           include: { coffeeLot: true }
         },
@@ -151,14 +173,14 @@ export class AuctionsService {
     const auction = await this.prisma.auction.findUnique({
       where: { id },
       include: {
-        admin: true,
-        seller: true,
+        admin: { select: PERSONA_PUBLICA },
+        seller: { select: PERSONA_PUBLICA },
         auctionDetails: {
           include: { coffeeLot: true }
         },
         bids: {
           orderBy: { amount: 'desc' },
-          include: { user: true }
+          include: { user: { select: PERSONA_PUBLICA } }
         },
         transactions: true,
       },
@@ -193,6 +215,30 @@ export class AuctionsService {
       }
     }
 
+    // Fechas coherentes. `create` ya lo validaba; `update` no, así que por aquí
+    // se podía dejar una subasta con el fin ANTES del inicio, o —peor— con una
+    // hora ya pasada: el temporizador la cerraba en menos de un segundo,
+    // adjudicando los lotes y mandando los correos sin vuelta atrás.
+    const inicio = new Date(updateAuctionDto.startDate ?? auction.startDate);
+    const fin = new Date(updateAuctionDto.endDate ?? auction.endDate);
+
+    if (fin <= inicio) {
+      throw new BadRequestException(
+        'La fecha de cierre debe ser posterior a la de inicio',
+      );
+    }
+
+    const quedaraActiva =
+      updateAuctionDto.status === AuctionStatus.ACTIVE ||
+      (auction.status === AuctionStatus.ACTIVE &&
+        updateAuctionDto.status === undefined);
+
+    if (quedaraActiva && updateAuctionDto.endDate && fin <= new Date()) {
+      throw new BadRequestException(
+        'La fecha de cierre ya pasó. Si quieres terminar la subasta ahora, ciérrala desde su estado.',
+      );
+    }
+
     // Coherencia status⟺isActive: ACTIVE ⇒ isActive true; DRAFT/CLOSED ⇒ false.
     // No dejamos que el cliente envíe combinaciones incoherentes (p. ej. status
     // ACTIVE con isActive false, que generaba "zombies" en /auctions/active).
@@ -216,8 +262,8 @@ export class AuctionsService {
     }
 
     const updatedAuction = await this.activateGuarded(id, data, {
-      admin: true,
-      seller: true,
+      admin: { select: PERSONA_PUBLICA },
+      seller: { select: PERSONA_PUBLICA },
       auctionDetails: { include: { coffeeLot: true } },
     });
 
@@ -228,8 +274,8 @@ export class AuctionsService {
       return this.prisma.auction.findUniqueOrThrow({
         where: { id },
         include: {
-          admin: true,
-          seller: true,
+          admin: { select: PERSONA_PUBLICA },
+          seller: { select: PERSONA_PUBLICA },
           auctionDetails: { include: { coffeeLot: true } },
         },
       });
@@ -239,6 +285,18 @@ export class AuctionsService {
       this.auctionTimerService.onAuctionActivated(id);
     } else if (updateAuctionDto.status === AuctionStatus.CLOSED) {
       this.auctionTimerService.onAuctionDeactivated(id);
+    }
+
+    // Si al admin le movieron la hora de cierre de una subasta en curso, hay que
+    // decírselo YA a quien esté mirando: el cierre lo maneja el servidor (relee
+    // la fecha cada segundo), pero las pantallas seguían con el contador viejo.
+    const finAnterior = new Date(auction.endDate).getTime();
+    const finNuevo = new Date(updatedAuction.endDate).getTime();
+    if (
+      updatedAuction.status === AuctionStatus.ACTIVE &&
+      Math.abs(finNuevo - finAnterior) >= 1000
+    ) {
+      void this.bidsGateway.notifyEndDateChanged(id, updatedAuction.endDate);
     }
 
     return updatedAuction;
@@ -349,7 +407,7 @@ export class AuctionsService {
       where,
       orderBy: { amount: 'desc' },
       take: 1,
-      include: { user: true, coffeeLot: true }
+      include: { user: { select: PERSONA_PUBLICA }, coffeeLot: true }
     });
 
     return bids[0] || null;
@@ -378,6 +436,40 @@ export class AuctionsService {
       startDate: auction.startDate,
       endDate: auction.endDate,
       status: auction.status,
+    };
+  }
+
+  /**
+   * Ficha pública de una subasta ya cerrada: sus lotes con toda la información
+   * del café (la misma que enseña la ficha durante la subasta) para que la
+   * página de resultados no se quede en una tabla plana. Sin datos personales:
+   * de las personas solo salen id, nombre y empresa (PERSONA_PUBLICA).
+   */
+  async findClosedAuctionLots(id: string) {
+    const auction = await this.prisma.auction.findUnique({
+      where: { id },
+      include: {
+        auctionDetails: { include: { coffeeLot: true } },
+      },
+    });
+
+    if (!auction) {
+      throw new NotFoundException(`Auction with ID ${id} not found`);
+    }
+    if (auction.status !== AuctionStatus.CLOSED) {
+      throw new BadRequestException(
+        'Esta ruta pública solo sirve subastas ya cerradas',
+      );
+    }
+
+    return {
+      id: auction.id,
+      title: auction.title,
+      description: auction.description,
+      startDate: auction.startDate,
+      endDate: auction.endDate,
+      status: auction.status,
+      auctionDetails: auction.auctionDetails,
     };
   }
 

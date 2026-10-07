@@ -47,7 +47,9 @@ export class BidsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Cola de procesamiento por lote: guarda la "cola" (última promesa encadenada)
   // de cada lote para serializar las pujas en orden de llegada. Ver handlePlaceBid.
-  private readonly pendingBids = new Map<string, Promise<void>>();
+  // La cola guarda la promesa de cada puja en curso por lote. El valor puede
+  // ser el resultado (socket y HTTP comparten esta cola), por eso `unknown`.
+  private readonly pendingBids = new Map<string, Promise<unknown>>();
   private heartbeatInterval: NodeJS.Timeout;
   private inactiveCheckInterval: NodeJS.Timeout;
   private isServerReady = false;
@@ -252,14 +254,42 @@ private checkInactiveConnections() {
         message: 'Tu conexión es lenta. Las pujas pueden tardar en procesarse.'
       });
     }
+    await this.enqueueBid(createBidDto, client);
+  }
+
+  /**
+   * Mensaje apto para enseñar al usuario. Los errores de negocio (monto por
+   * debajo del actual, subasta cerrada…) ya vienen redactados para él; los de
+   * la base de datos, no: enseñarlos filtra nombres de tablas y restricciones,
+   * y al comprador no le dicen nada.
+   */
+  static mensajeParaUsuario(error: any): string {
+    const bruto = String(error?.message ?? '');
+    const esDeBaseDeDatos =
+      String(error?.name ?? '').startsWith('PrismaClient') ||
+      /prisma\.|constraint|invocation/i.test(bruto);
+    return esDeBaseDeDatos || !bruto
+      ? 'No se pudo registrar la puja. Actualiza la página e inténtalo de nuevo.'
+      : bruto;
+  }
+
+  /**
+   * 📥 COLA POR ORDEN DE LLEGADA (en vez de rechazar).
+   * Las pujas del mismo lote se procesan SECUENCIALMENTE en el orden exacto
+   * en que llegaron al servidor (el event loop preserva ese orden), encadenando
+   * cada una tras la anterior. Así "el primero en el tiempo" gana de verdad,
+   * sin pedirle al usuario que reintente. El advisory lock de la BD refuerza
+   * esta serialización a nivel de base de datos.
+   *
+   * `client` es opcional: las pujas que entran por HTTP (`POST /bids`, el
+   * camino de respaldo cuando el comprador se queda sin WebSocket) pasan por
+   * ESTA MISMA cola y difunden `newBid` igual que las del socket, para que el
+   * resto de la sala vea el precio nuevo al instante. Sin cliente al que
+   * responder, el error se propaga y el controlador lo convierte en un 400.
+   */
+  async enqueueBid(createBidDto: CreateBidDto, client?: Socket) {
     const bidKey = `${createBidDto.auctionId}-${createBidDto.coffeeLotId}`;
 
-    // 📥 COLA POR ORDEN DE LLEGADA (en vez de rechazar).
-    // Las pujas del mismo lote se procesan SECUENCIALMENTE en el orden exacto
-    // en que llegaron al servidor (el event loop preserva ese orden), encadenando
-    // cada una tras la anterior. Así "el primero en el tiempo" gana de verdad,
-    // sin pedirle al usuario que reintente. El advisory lock de la BD refuerza
-    // esta serialización a nivel de base de datos.
     const previous = this.pendingBids.get(bidKey) ?? Promise.resolve();
     const task = previous
       .catch(() => {}) // un fallo previo no debe romper la cadena
@@ -268,7 +298,7 @@ private checkInactiveConnections() {
     this.pendingBids.set(bidKey, task);
 
     try {
-      await task;
+      return await task;
     } finally {
       // Liberar la entrada solo si esta tarea es la última de la cola
       if (this.pendingBids.get(bidKey) === task) {
@@ -279,7 +309,7 @@ private checkInactiveConnections() {
 
   // Procesa UNA puja y difunde el resultado. Maneja sus propios errores hacia el
   // cliente para que nunca rompa la cadena de la cola (siempre resuelve).
-  private async processAndBroadcastBid(createBidDto: CreateBidDto, client: Socket) {
+  private async processAndBroadcastBid(createBidDto: CreateBidDto, client?: Socket) {
     try {
       // Capturamos al mejor postor ANTES de procesar la nueva puja: si resulta
       // superado por otro usuario, le mandamos el push "te superaron la puja".
@@ -307,8 +337,9 @@ private checkInactiveConnections() {
         auctionStatus: updatedAuction?.status
       });
 
-      // Emitir al cliente que hizo la puja
-      client.emit('bidResponse', {
+      // Emitir al cliente que hizo la puja (por HTTP no hay socket al que
+      // responder: la confirmación viaja en la respuesta del POST).
+      client?.emit('bidResponse', {
         event: 'bidAccepted',
         data: result.bid,
         lastBids: result.lastBids,
@@ -339,16 +370,20 @@ private checkInactiveConnections() {
       // ✅ Verificar extensión inmediata después de cada puja
       await this.checkAndExtendAuctionImmediately(createBidDto.auctionId);
 
+      return result;
+
     } catch (error) {
       this.logger.error('Error procesando puja:', error);
+      if (!client) throw error; // puja por HTTP → que responda el controlador
       client.emit('bidResponse', {
         event: 'bidError',
-        data: error.message || 'Error al procesar la puja'
+        data: BidsGateway.mensajeParaUsuario(error),
       });
+      return null;
     }
   }
 
-  private async processBidWithRaceConditionProtection(createBidDto: CreateBidDto, client: Socket) {
+  private async processBidWithRaceConditionProtection(createBidDto: CreateBidDto, _client?: Socket) {
     // 1. Obtener precio actual más reciente
     const currentPrice = await this.bidsService.getCurrentPrice(
       createBidDto.auctionId,
@@ -469,6 +504,43 @@ private checkInactiveConnections() {
   }
 
   // ✅ MEJORADO: Notificar extensión con información completa
+  /**
+   * Avisa de que la lista de lotes de la subasta cambió (el admin añadió uno en
+   * caliente). Los clientes recargan; sin esto, el lote nuevo era invisible
+   * hasta que a alguien se le ocurriera refrescar la página, y podía terminar
+   * sin una sola puja.
+   */
+  async notifyLotsChanged(auctionId: string) {
+    this.logger.log(`📢 Lotes de la subasta ${auctionId} actualizados`);
+    const payload = { auctionId, serverTimestamp: Date.now() };
+    this.server.emit('auctionLotsChanged', payload);
+    this.server.to(`auction-${auctionId}`).emit('auctionLotsChanged', payload);
+  }
+
+  /**
+   * Avisa de que el ADMIN movió la hora de cierre (no es la extensión
+   * automática por pujas de último minuto, que tiene su propio evento y su
+   * propio mensaje). Sin esto, el cambio tardaba hasta medio minuto en llegar a
+   * las pantallas, y quien ya tuviera el contador a cero se quedaba con la
+   * subasta dada por terminada.
+   */
+  async notifyEndDateChanged(auctionId: string, newEndDate: Date) {
+    this.logger.log(
+      `📢 Nueva hora de cierre para la subasta ${auctionId}: ${newEndDate.toISOString()}`,
+    );
+
+    const payload = {
+      auctionId,
+      newEndDate: newEndDate.toISOString(),
+      reason: 'La hora de cierre fue modificada por el administrador',
+      serverTimestamp: Date.now(),
+      timeRemaining: newEndDate.getTime() - Date.now(),
+    };
+
+    this.server.emit('auctionEndDateChanged', payload);
+    this.server.to(`auction-${auctionId}`).emit('auctionEndDateChanged', payload);
+  }
+
   async notifyAuctionExtension(auctionId: string, newEndDate: Date, minutos = 3) {
     this.logger.log(`📢 Emitiendo auctionExtended para subasta ${auctionId}`);
 

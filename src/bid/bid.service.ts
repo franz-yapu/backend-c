@@ -242,6 +242,14 @@ export class BidsService {
   }
 
   async createWithOptimisticLock(createBidDto: CreateBidDto): Promise<any> {
+    // El userId lo pone SIEMPRE el servidor desde el token (gateway o
+    // controlador). Si llega vacío es un fallo de programación, no una puja
+    // legítima: mejor cortar aquí que insertar una puja sin dueño.
+    const userId = createBidDto.userId;
+    if (!userId) {
+      throw new BadRequestException('No autenticado: la puja no tiene usuario');
+    }
+
     const TRANSACTION_TIMEOUT = 15000;
     return this.prisma.$transaction(async (tx) => {
       // 🔒 Serialización por lote a nivel de BASE DE DATOS.
@@ -269,6 +277,23 @@ export class BidsService {
       }
       if (new Date() > new Date(auction.endDate)) {
         throw new BadRequestException('El tiempo de la subasta ha finalizado');
+      }
+
+      // El lote tiene que pertenecer a ESTA subasta. Sin esta comprobación, un
+      // cliente manipulado podía pujar por un lote retirado (o de otra subasta):
+      // más abajo el precio inicial se leía con `?? 0`, así que la puja pasaba
+      // sin control de precio y quedaba registrada sin que nadie la viera.
+      const perteneceALaSubasta = await tx.auctionCoffeeLot.findFirst({
+        where: {
+          auctionId: createBidDto.auctionId,
+          coffeeLotId: createBidDto.coffeeLotId,
+        },
+        select: { id: true },
+      });
+      if (!perteneceALaSubasta) {
+        throw new BadRequestException(
+          'Ese lote ya no forma parte de esta subasta',
+        );
       }
 
       // 1. Verificar precio actual dentro de la transacción
@@ -317,7 +342,7 @@ export class BidsService {
           amount: createBidDto.amount,
           auctionId: createBidDto.auctionId,
           coffeeLotId: createBidDto.coffeeLotId,
-          userId: createBidDto.userId,
+          userId,
         },
         include: {
           user: {

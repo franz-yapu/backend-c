@@ -85,6 +85,15 @@ export class AuctionsController {
     return this.auctionsService.findLastClosedAuction();
   }
 
+  @Public() // Página pública /winners: la ficha de cada lote ya subastado.
+  @Get(':id/closed-lots')
+  @ApiOperation({ summary: 'Lotes (con su ficha completa) de una subasta cerrada' })
+  @ApiResponse({ status: 200, description: 'Lotes de la subasta cerrada' })
+  @ApiParam({ name: 'id', description: 'Auction ID', type: String })
+  async findClosedAuctionLots(@Param('id') id: string) {
+    return this.auctionsService.findClosedAuctionLots(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get an auction by ID' })
   @ApiResponse({ status: 200, description: 'Auction details' })

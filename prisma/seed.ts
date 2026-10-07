@@ -245,7 +245,11 @@ async function seedActiveAuction() {
         flavor: 'caramelo, nuez, miel; cuerpo sedoso',
         status: 'IN_AUCTION',
         isInAuction: true,
-        seller: seller.id,
+        // `seller` es el NOMBRE del productor, no su id: así lo trata el resto
+        // del código (el cierre lo copia tal cual a la transacción y la página
+        // pública de ganadores lo muestra en la columna "Productor"). Sembrando
+        // aquí `seller.id` salía un UUID en pantalla al cerrar la subasta.
+        seller: `Productor ${position}`,
         auctionId: AUCTION_ID,
       },
     });
