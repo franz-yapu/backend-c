@@ -441,7 +441,7 @@ private checkInactiveConnections() {
       if (timeRemaining <= minutos * 60 * 1000) {
         const newEndDate = new Date(Date.now() + minutos * 60 * 1000);
 
-        await this.bidsService.extendAuction(auctionId, newEndDate);
+        await this.bidsService.extendAuction(auctionId, newEndDate, endDate, minutos);
 
         this.logger.log(`⏰✅ Subasta ${auctionId} extendida ${minutos} min por puja en los últimos ${minutos} min`);
         await this.notifyAuctionExtension(auctionId, newEndDate, minutos);
@@ -513,8 +513,9 @@ private checkInactiveConnections() {
   async notifyLotsChanged(auctionId: string) {
     this.logger.log(`📢 Lotes de la subasta ${auctionId} actualizados`);
     const payload = { auctionId, serverTimestamp: Date.now() };
+    // Un solo envío a todos: antes se mandaba también a la sala y quien estaba
+    // en ella lo recibía dos veces (solo hay una subasta activa a la vez).
     this.server.emit('auctionLotsChanged', payload);
-    this.server.to(`auction-${auctionId}`).emit('auctionLotsChanged', payload);
   }
 
   /**
@@ -537,14 +538,15 @@ private checkInactiveConnections() {
       timeRemaining: newEndDate.getTime() - Date.now(),
     };
 
+    // Un solo envío a todos (ver notifyLotsChanged).
     this.server.emit('auctionEndDateChanged', payload);
-    this.server.to(`auction-${auctionId}`).emit('auctionEndDateChanged', payload);
   }
 
   async notifyAuctionExtension(auctionId: string, newEndDate: Date, minutos = 3) {
     this.logger.log(`📢 Emitiendo auctionExtended para subasta ${auctionId}`);
 
-    // Emitir a TODOS los clientes, no solo a la sala
+    // Un solo envío a todos: antes iba también a la sala y cada comprador
+    // conectado veía el aviso de extensión dos veces.
     this.server.emit('auctionExtended', {
       auctionId: auctionId,
       newEndDate: newEndDate.toISOString(),
@@ -556,23 +558,13 @@ private checkInactiveConnections() {
       timeRemaining: newEndDate.getTime() - Date.now(),
       formattedEndDate: newEndDate.toLocaleTimeString(),
     });
-
-    // También emitir a la sala específica
-    this.server.to(`auction-${auctionId}`).emit('auctionExtended', {
-      auctionId: auctionId,
-      newEndDate: newEndDate.toISOString(),
-      extendedBy: `${minutos} minutos`,
-      reason: `Puja realizada en los últimos ${minutos} minutos de la subasta`,
-      timestamp: new Date().toISOString(),
-      serverTimestamp: Date.now(),
-    });
   }
 
   // ✅ MEJORADO: Notificar cierre con información completa
   async notifyAuctionClosed(auctionId: string) {
     this.logger.log(`📢 Emitiendo auctionClosed para subasta ${auctionId}`);
 
-    // Emitir a TODOS los clientes
+    // Un solo envío a todos (antes también a la sala → llegaba duplicado).
     this.server.emit('auctionClosed', {
       auctionId: auctionId,
       closedAt: new Date().toISOString(),
@@ -580,17 +572,6 @@ private checkInactiveConnections() {
       timestamp: new Date().toISOString(),
       serverTimestamp: Date.now(),
       // Información para actualizar UI
-      status: 'CLOSED',
-      final: true,
-    });
-
-    // También emitir a la sala específica
-    this.server.to(`auction-${auctionId}`).emit('auctionClosed', {
-      auctionId: auctionId,
-      closedAt: new Date().toISOString(),
-      message: 'Subasta finalizada definitivamente',
-      timestamp: new Date().toISOString(),
-      serverTimestamp: Date.now(),
       status: 'CLOSED',
       final: true,
     });

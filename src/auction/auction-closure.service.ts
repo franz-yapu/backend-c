@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from 'src/email/email.service';
 import { AuctionStatus } from '@prisma/client';
 import { BidsGateway } from 'src/bid/bids.gateway';
+import { cuentaComoExtension } from 'src/common/contador-extensiones';
 
 @Injectable()
 export class AuctionClosureService {
@@ -75,7 +76,7 @@ export class AuctionClosureService {
     
     if (hasRecentBids) {
       this.logger.log(`⏰ Subasta ${auctionId} tiene pujas recientes, extendiendo...`);
-      await this.extendAuction(auctionId, minutos);
+      await this.extendAuction(auctionId, minutos, auction.endDate);
     } else {
       this.logger.log(`🔚 Subasta ${auctionId} no tiene pujas recientes, cerrando...`);
       await this.closeAuction(auctionId);
@@ -100,12 +101,21 @@ export class AuctionClosureService {
     return !!recentBids;
   }
 
-  async extendAuction(auctionId: string, minutos = this.EXTENSION_MINUTES): Promise<void> {
+  async extendAuction(
+    auctionId: string,
+    minutos = this.EXTENSION_MINUTES,
+    finAnterior = new Date(),
+  ): Promise<void> {
     const newEndDate = new Date(Date.now() + minutos * 60 * 1000);
-    
+    // extendedTimes solo sube por bloques completos (ver contador-extensiones).
+    const contar = cuentaComoExtension(auctionId, finAnterior, newEndDate, minutos);
+
     await this.prisma.auction.update({
       where: { id: auctionId },
-      data: { endDate: newEndDate, extendedTimes: { increment: 1 } }
+      data: {
+        endDate: newEndDate,
+        ...(contar && { extendedTimes: { increment: 1 } }),
+      },
     });
 
     this.logger.log(`⏰ Subasta ${auctionId} extendida hasta ${newEndDate}`);

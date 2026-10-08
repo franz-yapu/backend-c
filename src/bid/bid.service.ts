@@ -9,6 +9,7 @@ import { CreateBidDto } from './dto/create-bid.dto';
 import { AuctionStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BidsGateway } from './bids.gateway';
+import { cuentaComoExtension } from 'src/common/contador-extensiones';
 
 @Injectable()
 export class BidsService {
@@ -202,10 +203,20 @@ export class BidsService {
     });
   }
 
-  async extendAuction(auctionId: string, newEndDate: Date) {
+  async extendAuction(
+    auctionId: string,
+    newEndDate: Date,
+    finAnterior: Date,
+    minutos: number,
+  ) {
+    // extendedTimes solo sube por bloques completos de extensión, no por puja.
+    const contar = cuentaComoExtension(auctionId, finAnterior, newEndDate, minutos);
     return this.prisma.auction.update({
       where: { id: auctionId },
-      data: { endDate: newEndDate , extendedTimes: { increment: 1 } }
+      data: {
+        endDate: newEndDate,
+        ...(contar && { extendedTimes: { increment: 1 } }),
+      },
     });
   }
 
